@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arcane Chemistry | Markerless AR</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body class="ar-page markerless-page">
+    <div class="hud top-bar">
+      <button class="ghost-button" onclick="window.location.href='index.html'">Home</button>
+      <div class="hud-panel small">
+        <strong>Markerless AR</strong>
+        <span id="reaction-status">Scan a surface and tap to place your cauldron.</span>
+      </div>
+    </div>
+
+    <div class="ingredient-ui">
+      <div class="ingredient-header">Ingredient Jar</div>
+      <div class="ingredient-grid">
+        <button class="ingredient-btn" data-ingredient="vinegar">Vinegar</button>
+        <button class="ingredient-btn" data-ingredient="baking_soda">Baking Soda</button>
+        <button class="ingredient-btn" data-ingredient="copper_sulfate">Copper Sulfate</button>
+        <button class="ingredient-btn" data-ingredient="iron">Iron</button>
+        <button class="ingredient-btn" data-ingredient="hydrochloric_acid">Hydrochloric Acid</button>
+        <button class="ingredient-btn" data-ingredient="sodium_hydroxide">Sodium Hydroxide</button>
+      </div>
+    </div>
+
+    <script type="module" src="js/markerless-scene.js"></script>
+    <script src="js/ui.js"></script>
+  </body>
+</html>
