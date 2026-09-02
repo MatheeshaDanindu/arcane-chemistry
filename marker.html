@@ -2,36 +2,64 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Prevents the camera from zooming in too much on mobile -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-    <title>Arcane Chemistry | Safe Mode Test</title>
-    <!-- 1. DOWNGRADED A-FRAME TO 1.3.0 -->
+    <title>Arcane Chemistry | Marker AR</title>
+    
+    <!-- <link rel="stylesheet" href="css/style.css" /> -->
+    
+    <!-- Using A-Frame 1.3.0 for guaranteed AR.js stability -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   </head>
   
-  <body style="margin: 0px; overflow: hidden;">
+  <!-- Strict margins and hidden overflow to prevent the camera video from being pushed off-screen -->
+  <body class="ar-page marker-page" style="margin: 0px; overflow: hidden;">
     
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-  
-        <!-- Pre-load your 3D model here -->
-        <a-assets>
-            <a-asset-item id="spellbook-model" src="assets/models/spellbook.glb"></a-asset-item>
-        </a-assets>
+    <!-- HUD / UI Overlay -->
+    <!-- (Ensuring absolute positioning and a high z-index so it sits on top of the camera) -->
+    <div class="hud top-bar" style="position: absolute; top: 10px; left: 10px; z-index: 1000;">
+      <button class="ghost-button" onclick="window.location.href='index.html'">Home</button>
+      <div class="hud-panel small" style="display: inline-block; margin-left: 10px; background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 5px; font-family: sans-serif;">
+        <strong>Marker AR</strong>
+        <span id="marker-status">Looking for marker…</span>
+      </div>
+    </div>
 
-        <a-marker type="pattern" url="./assets/markers/spellbook-marker.patt">
-            
-            <!-- Use the pre-loaded model -->
-            <a-entity 
-            gltf-model="#spellbook-model" 
-            scale="0.3 0.3 0.3" 
-            position="0 0 0" 
-            rotation="-90 0 0">
-            </a-entity>
-            
-        </a-marker>
+    <!-- AR Scene with fixed resolution to stop the zoomed-in effect -->
+    <a-scene 
+      embedded 
+      arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960; debugUIEnabled: false;"
+      vr-mode-ui="enabled: false">
+      
+      <!-- Asset Management: Preloading the 3D model prevents stuttering -->
+      <a-assets>
+        <a-asset-item id="spellbook-model" src="assets/models/spellbook.glb"></a-asset-item>
+      </a-assets>
+
+      <!-- The Custom Marker -->
+      <!-- Make sure the URL perfectly matches your generated .patt file -->
+      <a-marker type="pattern" url="./assets/markers/spellbook-marker.patt" id="custom-marker">
         
-        <a-entity camera></a-entity>
+        <!-- Lighting to make sure the model is clearly visible -->
+        <a-light type="ambient" intensity="1.2"></a-light>
+        <a-light type="point" intensity="1.8" distance="5" position="0 2 1"></a-light>
+        
+        <!-- The 3D Model -->
+        <!-- Note: rotation is set to -90 0 0 so it stands up flat on the marker -->
+        <a-entity
+          id="spellbook"
+          gltf-model="#spellbook-model"
+          position="0 0 0"
+          rotation="-90 0 0"
+          scale="0.15 0.15 0.15"
+        ></a-entity>
+        
+      </a-marker>
+      
+      <a-entity camera></a-entity>
     </a-scene>
 
+    <script src="js/marker-scene.js"></script>
   </body>
 </html>
