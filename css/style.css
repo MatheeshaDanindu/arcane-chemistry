@@ -1,4 +1,4 @@
-/* :root {
+:root {
   --bg-deep: #0b1220;
   --bg-mid: #1d2236;
   --panel: rgba(13, 19, 32, 0.7);
@@ -10,7 +10,7 @@
   --muted: #b8c7dc;
   --danger: #ff6b6b;
   --success: #7ef0c5;
-} */
+}
 
 * {
   box-sizing: border-box;
@@ -118,10 +118,21 @@ h1 {
 }
 
 .ar-page {
-  /* position: relative; */
+  position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
+}
+
+#camera-fallback {
+  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  background: #111827;
 }
 
 #scene,

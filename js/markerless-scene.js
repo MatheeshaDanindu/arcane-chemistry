@@ -19,6 +19,34 @@ document.body.appendChild(
   })
 );
 
+const statusElement = document.getElementById('reaction-status');
+const fallbackVideo = document.getElementById('camera-fallback');
+
+async function startCameraFallback() {
+  if (!fallbackVideo || !navigator.mediaDevices?.getUserMedia) {
+    if (statusElement) statusElement.textContent = 'WebXR is unavailable on this browser. Use Android Chrome for markerless AR.';
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    fallbackVideo.srcObject = stream;
+    fallbackVideo.style.display = 'block';
+    if (statusElement) statusElement.textContent = 'Camera preview active. Use Android Chrome to place objects on detected surfaces.';
+  } catch (error) {
+    console.warn('Camera fallback could not start:', error);
+    if (statusElement) statusElement.textContent = 'Camera access failed. Check browser permissions and use HTTPS.';
+  }
+}
+
+if (!navigator.xr) {
+  startCameraFallback();
+} else if (navigator.xr.isSessionSupported) {
+  navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+    if (!supported) startCameraFallback();
+  }).catch(() => startCameraFallback());
+}
+
 const ambient = new THREE.HemisphereLight(0xf0f8ff, 0x3a2e2e, 1.25);
 scene.add(ambient);
 
