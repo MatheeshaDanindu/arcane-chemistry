@@ -8,8 +8,12 @@
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   </head>
-  <body class="ar-page marker-page">
-    <div class="hud top-bar">
+  
+  <!-- Fix 2: Added inline margin and overflow constraints to prevent the camera from hiding -->
+  <body class="ar-page marker-page" style="margin: 0px; overflow: hidden;">
+    
+    <!-- Make sure your CSS for .hud has position: absolute and z-index: 10 or higher so it sits over the camera -->
+    <div class="hud top-bar" style="position: absolute; z-index: 10;">
       <button class="ghost-button" onclick="window.location.href='index.html'">Home</button>
       <div class="hud-panel small">
         <strong>Marker AR</strong>
@@ -18,7 +22,9 @@
     </div>
 
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-      <a-marker type="pattern" url="assets/markers/spellbook-marker.patt" id="hiro-marker">
+      
+      <!-- Fix 1: Changed .png to .patt -->
+      <a-marker type="pattern" url="assets/markers/pattern-spellbook.patt" id="custom-marker">
         <a-light type="point" intensity="1.8" distance="5" position="0 2 1"></a-light>
         <a-entity
           id="spellbook"
@@ -28,6 +34,7 @@
           scale="0.32 0.32 0.32"
         ></a-entity>
       </a-marker>
+      
       <a-entity camera></a-entity>
     </a-scene>
 
