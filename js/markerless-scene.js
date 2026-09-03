@@ -179,11 +179,21 @@ function buildCauldronFromModel(model) {
   root.scale.set(0.65, 0.65, 0.65);
   root.position.y = 0.02;
 
+  root.updateMatrixWorld(true);
+  const modelBounds = new THREE.Box3().setFromObject(root);
+  const modelCenter = modelBounds.getCenter(new THREE.Vector3());
+  const liquidWorldPosition = new THREE.Vector3(
+    modelCenter.x,
+    modelBounds.max.y - (modelBounds.max.y - modelBounds.min.y) * 0.16,
+    modelCenter.z
+  );
+  root.worldToLocal(liquidWorldPosition);
+
   const liquid = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.17, 0.22, 0.08, 32),
+    new THREE.CylinderGeometry(0.18, 0.22, 0.06, 32),
     new THREE.MeshStandardMaterial({ color: 0x6ee7b7, emissive: 0x113322, transparent: true, opacity: 0.9 })
   );
-  liquid.position.y = 0.16;
+  liquid.position.copy(liquidWorldPosition);
   liquid.visible = true;
   root.add(liquid);
 
