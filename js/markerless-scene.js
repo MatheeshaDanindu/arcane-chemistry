@@ -116,8 +116,10 @@ let hitTestSource = null;
 let hitTestSourceRequested = false;
 let cauldronModel = null;
 let cauldronRoot = null;
-let brewingState = 'idle';
+let brewingState = 'awaitingPlacement';
 let selectedIngredients = [];
+let brewHistory = [];
+let placementLocked = false;
 
 const loader = new GLTFLoader();
 const reactionAudio = {
@@ -280,6 +282,7 @@ async function handleMix() {
 function attachIngredientInteractions() {
   const buttons = Array.from(document.querySelectorAll('.ingredient-btn'));
   buttons.forEach((button) => {
+    button.addEventListener('pointerdown', (event) => event.stopPropagation());
     button.addEventListener('click', () => {
       const ingredient = button.dataset.ingredient;
       if (!ingredient) return;
@@ -317,6 +320,14 @@ function attachIngredientInteractions() {
 
 renderer.xr.addEventListener('sessionstart', async () => {
   const session = renderer.xr.getSession();
+  placementLocked = false;
+  if (cauldronRoot) {
+    scene.remove(cauldronRoot);
+    cauldronRoot = null;
+  }
+  setIngredientAvailability(false);
+  clearIngredientSelection();
+  setBrewingState('awaitingPlacement', 'awaiting placement');
   const viewerSpace = await session.requestReferenceSpace('viewer');
   hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
   hitTestSourceRequested = true;
@@ -340,7 +351,7 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 function renderReticle(frame) {
-  if (!hitTestSource || !reticle) return;
+  if (!hitTestSource || !reticle || placementLocked) return;
 
   const session = renderer.xr.getSession();
   if (!session) return;
@@ -382,9 +393,12 @@ renderer.setAnimationLoop((time) => {
 });
 
 async function placeCauldronAtReticle() {
-  if (!reticle.visible) {
+  if (!reticle.visible || placementLocked) {
     return;
   }
+
+  placementLocked = true;
+  reticle.visible = false;
 
   if (!cauldronRoot) {
     cauldronRoot = await loadCauldronModel();
@@ -416,11 +430,11 @@ function resetBrew() {
 
 window.addEventListener('click', (event) => {
   const target = event.target;
-  if (target && target.classList && target.classList.contains('ingredient-btn')) {
+  if (target && target.closest && (target.closest('.ingredient-btn') || target.closest('.hud') || target.closest('.ingredient-ui') || target.closest('.potion-log') || target.closest('#camera-preview-button'))) {
     return;
   }
 
-  if (reticle.visible) {
+  if (reticle.visible && !placementLocked) {
     placeCauldronAtReticle();
   }
 });
