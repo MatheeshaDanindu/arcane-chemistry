@@ -135,6 +135,16 @@ h1 {
   background: #111827;
 }
 
+.ar-page > canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.ar-page > button {
+  z-index: 70 !important;
+}
+
 #scene,
 .a-scene {
   position: absolute !important;

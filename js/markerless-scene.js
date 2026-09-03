@@ -22,9 +22,18 @@ document.body.appendChild(
 const statusElement = document.getElementById('reaction-status');
 const fallbackVideo = document.getElementById('camera-fallback');
 
+function setStatus(message) {
+  if (statusElement) statusElement.textContent = message;
+}
+
 async function startCameraFallback() {
   if (!fallbackVideo || !navigator.mediaDevices?.getUserMedia) {
-    if (statusElement) statusElement.textContent = 'WebXR is unavailable on this browser. Use Android Chrome for markerless AR.';
+    setStatus('Camera API unavailable. Use Android Chrome over HTTPS for markerless AR.');
+    return;
+  }
+
+  if (!window.isSecureContext) {
+    setStatus('Camera requires HTTPS. Open the GitHub Pages HTTPS address, not a local HTTP address.');
     return;
   }
 
@@ -32,10 +41,10 @@ async function startCameraFallback() {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
     fallbackVideo.srcObject = stream;
     fallbackVideo.style.display = 'block';
-    if (statusElement) statusElement.textContent = 'Camera preview active. Use Android Chrome to place objects on detected surfaces.';
+    setStatus('Camera preview active. WebXR placement requires Android Chrome with START AR support.');
   } catch (error) {
     console.warn('Camera fallback could not start:', error);
-    if (statusElement) statusElement.textContent = 'Camera access failed. Check browser permissions and use HTTPS.';
+    setStatus(`Camera access failed (${error.name}). Check site permissions and HTTPS.`);
   }
 }
 
@@ -43,8 +52,14 @@ if (!navigator.xr) {
   startCameraFallback();
 } else if (navigator.xr.isSessionSupported) {
   navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-    if (!supported) startCameraFallback();
+    if (supported) {
+      setStatus('Tap START AR below to open the camera and scan a surface.');
+    } else {
+      startCameraFallback();
+    }
   }).catch(() => startCameraFallback());
+} else {
+  startCameraFallback();
 }
 
 const ambient = new THREE.HemisphereLight(0xf0f8ff, 0x3a2e2e, 1.25);
@@ -246,8 +261,14 @@ renderer.xr.addEventListener('sessionstart', async () => {
   const viewerSpace = await session.requestReferenceSpace('viewer');
   hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
   hitTestSourceRequested = true;
-  const status = document.getElementById('reaction-status');
-  if (status) status.textContent = 'Surface detected. Tap to place the cauldron.';
+  setStatus('Move your phone to scan a surface, then tap the reticle to place the cauldron.');
+});
+
+renderer.xr.addEventListener('sessionend', () => {
+  hitTestSource = null;
+  hitTestSourceRequested = false;
+  reticle.visible = false;
+  setStatus('AR session ended. Tap START AR to try again.');
 });
 
 function renderReticle(frame) {
