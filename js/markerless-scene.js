@@ -138,6 +138,45 @@ function playReactionAudio(effect) {
   });
 }
 
+function createGlowParticleMaterial(color, size, opacity) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      particleColor: { value: new THREE.Color(color) },
+      particleSize: { value: size },
+      particleOpacity: { value: opacity },
+      time: { value: 0 }
+    },
+    vertexShader: `
+      uniform float particleSize;
+      uniform float time;
+      void main() {
+        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+        float drift = sin(time * 1.4 + position.y * 8.0) * 0.012;
+        worldPosition.x += drift;
+        worldPosition.z += cos(time * 1.1 + position.x * 7.0) * 0.01;
+        vec4 viewPosition = viewMatrix * worldPosition;
+        gl_Position = projectionMatrix * viewPosition;
+        gl_PointSize = particleSize * (190.0 / max(1.0, -viewPosition.z));
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 particleColor;
+      uniform float particleOpacity;
+      void main() {
+        vec2 point = gl_PointCoord - vec2(0.5);
+        float distanceFromCenter = length(point);
+        float softEdge = 1.0 - smoothstep(0.08, 0.5, distanceFromCenter);
+        float halo = 1.0 - smoothstep(0.18, 0.5, distanceFromCenter);
+        if (distanceFromCenter > 0.5) discard;
+        gl_FragColor = vec4(particleColor * (1.0 + halo * 0.8), softEdge * particleOpacity);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+}
+
 function loadPlaceholderCauldron() {
   const group = new THREE.Group();
   const body = new THREE.Mesh(
@@ -163,7 +202,7 @@ function loadPlaceholderCauldron() {
     positions[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
   }
   steamGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const steamMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.02, transparent: true, opacity: 0.7 });
+  const steamMaterial = createGlowParticleMaterial(0xf4d35e, 0.028, 0.82);
   const steam = new THREE.Points(steamGeometry, steamMaterial);
   steam.position.y = 0.3;
   steam.visible = false;
@@ -171,6 +210,7 @@ function loadPlaceholderCauldron() {
 
   group.userData.steam = steam;
   group.userData.liquid = liquid;
+  group.userData.steamMaterial = steamMaterial;
   return group;
 }
 
@@ -181,10 +221,25 @@ function buildCauldronFromModel(model) {
 
   root.updateMatrixWorld(true);
   const modelBounds = new THREE.Box3().setFromObject(root);
-  const modelCenter = modelBounds.getCenter(new THREE.Vector3());
+  let bodyBounds = null;
+  let largestBodyVolume = 0;
+
+  root.traverse((child) => {
+    if (!child.isMesh) return;
+    const childBounds = new THREE.Box3().setFromObject(child);
+    const childSize = childBounds.getSize(new THREE.Vector3());
+    const childVolume = childSize.x * childSize.y * childSize.z;
+    if (childVolume > largestBodyVolume) {
+      largestBodyVolume = childVolume;
+      bodyBounds = childBounds;
+    }
+  });
+
+  const openingBounds = bodyBounds || modelBounds;
+  const modelCenter = openingBounds.getCenter(new THREE.Vector3());
   const liquidWorldPosition = new THREE.Vector3(
     modelCenter.x,
-    modelBounds.max.y - (modelBounds.max.y - modelBounds.min.y) * 0.16,
+    openingBounds.max.y - (openingBounds.max.y - openingBounds.min.y) * 0.16,
     modelCenter.z
   );
   root.worldToLocal(liquidWorldPosition);
@@ -206,7 +261,7 @@ function buildCauldronFromModel(model) {
     positions[i * 3 + 2] = (Math.random() - 0.5) * 0.35;
   }
   steamGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const steamMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.025, transparent: true, opacity: 0.75 });
+  const steamMaterial = createGlowParticleMaterial(0xf4d35e, 0.032, 0.86);
   const steam = new THREE.Points(steamGeometry, steamMaterial);
   steam.position.y = 0.34;
   steam.visible = false;
@@ -214,6 +269,7 @@ function buildCauldronFromModel(model) {
 
   root.userData.steam = steam;
   root.userData.liquid = liquid;
+  root.userData.steamMaterial = steamMaterial;
   return root;
 }
 
@@ -398,6 +454,10 @@ renderer.setAnimationLoop((time) => {
     const steam = cauldronRoot.userData.steam;
     if (steam) {
       steam.rotation.y += 0.01;
+    }
+    const steamMaterial = cauldronRoot.userData.steamMaterial;
+    if (steamMaterial) {
+      steamMaterial.uniforms.time.value = time * 0.001;
     }
   }
 });
