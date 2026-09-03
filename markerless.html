@@ -28,19 +28,32 @@
     <button id="camera-preview-button" class="camera-preview-button" type="button">Open Camera Preview</button>
 
     <div class="ingredient-ui">
-      <div class="ingredient-header">Ingredient Jar</div>
+      <div class="ingredient-header">Apothecary Ingredients</div>
+      <p class="ingredient-help" id="ingredient-help">Place your cauldron before choosing two reagents.</p>
       <div class="ingredient-grid">
-        <button class="ingredient-btn" data-ingredient="vinegar">Vinegar</button>
-        <button class="ingredient-btn" data-ingredient="baking_soda">Baking Soda</button>
-        <button class="ingredient-btn" data-ingredient="copper_sulfate">Copper Sulfate</button>
-        <button class="ingredient-btn" data-ingredient="iron">Iron</button>
-        <button class="ingredient-btn" data-ingredient="hydrochloric_acid">Hydrochloric Acid</button>
-        <button class="ingredient-btn" data-ingredient="sodium_hydroxide">Sodium Hydroxide</button>
+        <button class="ingredient-btn" data-ingredient="vinegar" disabled>Vinegar</button>
+        <button class="ingredient-btn" data-ingredient="baking_soda" disabled>Baking Soda</button>
+        <button class="ingredient-btn" data-ingredient="copper_sulfate" disabled>Copper Sulfate</button>
+        <button class="ingredient-btn" data-ingredient="iron" disabled>Iron Filings</button>
+        <button class="ingredient-btn" data-ingredient="hydrochloric_acid" disabled>Hydrochloric Acid</button>
+        <button class="ingredient-btn" data-ingredient="sodium_hydroxide" disabled>Sodium Hydroxide</button>
       </div>
+      <div class="brew-actions">
+        <button id="reset-brew-button" class="secondary-button" type="button" disabled>Clear Cauldron</button>
+        <span id="brew-state">State: awaiting placement</span>
+      </div>
+    </div>
+
+    <aside class="potion-log" aria-live="polite">
+      <div class="log-heading">
+        <span>Wizard's Potion Log</span>
+        <span id="data-source">Curated fallback ready</span>
+      </div>
+      <div id="reaction-result" class="reaction-result">No potion brewed yet.</div>
+      <div id="reaction-history" class="reaction-history"></div>
     </div>
 
     <script src="js/reaction-data.js"></script>
     <script type="module" src="js/markerless-scene.js"></script>
-    <script src="js/ui.js"></script>
   </body>
 </html>

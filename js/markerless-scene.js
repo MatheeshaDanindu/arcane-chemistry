@@ -22,9 +22,39 @@ document.body.appendChild(
 const statusElement = document.getElementById('reaction-status');
 const fallbackVideo = document.getElementById('camera-fallback');
 const cameraPreviewButton = document.getElementById('camera-preview-button');
+const ingredientHelp = document.getElementById('ingredient-help');
+const brewStateElement = document.getElementById('brew-state');
+const reactionResultElement = document.getElementById('reaction-result');
+const reactionHistoryElement = document.getElementById('reaction-history');
+const dataSourceElement = document.getElementById('data-source');
+const resetBrewButton = document.getElementById('reset-brew-button');
 
 function setStatus(message) {
   if (statusElement) statusElement.textContent = message;
+}
+
+function setBrewingState(state, message) {
+  brewingState = state;
+  if (brewStateElement) brewStateElement.textContent = `State: ${message}`;
+}
+
+function setIngredientAvailability(enabled) {
+  document.querySelectorAll('.ingredient-btn').forEach((button) => {
+    button.disabled = !enabled;
+  });
+  if (resetBrewButton) resetBrewButton.disabled = !enabled;
+}
+
+function clearIngredientSelection() {
+  selectedIngredients = [];
+  document.querySelectorAll('.ingredient-btn').forEach((button) => button.classList.remove('selected'));
+}
+
+function renderHistory() {
+  if (!reactionHistoryElement) return;
+  reactionHistoryElement.innerHTML = brewHistory.length
+    ? brewHistory.map((entry) => `<div class="history-entry">${entry.ingredients} → ${entry.label}</div>`).join('')
+    : 'Your completed brews will appear here.';
 }
 
 async function startCameraFallback() {
@@ -195,42 +225,56 @@ function updateCauldronReaction(reaction) {
 
   liquid.material.color.setHex(reaction.color);
   liquid.material.emissive = new THREE.Color(reaction.color).multiplyScalar(0.2);
+  liquid.material.needsUpdate = true;
+
+  cauldronRoot.scale.multiplyScalar(1.08);
+  window.setTimeout(() => {
+    if (cauldronRoot) cauldronRoot.scale.multiplyScalar(0.9259);
+  }, 450);
 
   if (reaction.effect === 'fizz') {
     steam.visible = true;
+    steam.scale.setScalar(1.5);
     playReactionAudio('fizz');
   } else if (reaction.effect === 'neutralize') {
     steam.visible = false;
     playReactionAudio('neutralize');
   } else if (reaction.effect === 'displacement' || reaction.effect === 'precipitate') {
     steam.visible = true;
+    steam.scale.setScalar(1.25);
     playReactionAudio('displacement');
   } else {
     steam.visible = false;
   }
 
-  const statusElement = document.getElementById('reaction-status');
-  if (statusElement) {
-    statusElement.textContent = `${reaction.label} — ${reaction.description}`;
-  }
+  setStatus(`${reaction.label} — ${reaction.description}`);
 }
 
 async function handleMix() {
-  if (selectedIngredients.length < 2 || !cauldronRoot) {
+  if (selectedIngredients.length < 2 || !cauldronRoot || brewingState !== 'ingredientBSelected') {
     return;
   }
 
   const [first, second] = selectedIngredients;
-  const reaction = window.ArcaneChemistry?.getReaction(first, second) || { color: 0x888888, effect: 'none', label: 'No reaction', description: 'These ingredients do not react in a useful way.' };
+  const fallbackReaction = window.ArcaneChemistry?.getReaction(first, second) || { color: 0x888888, effect: 'none', label: 'No reaction', description: 'These ingredients do not react in a useful way.', tempChange: 0 };
+  setBrewingState('brewing', 'brewing your potion');
+  setStatus('The cauldron is stirring... consult the stars while the brew settles.');
+  if (ingredientHelp) ingredientHelp.textContent = 'Your reagents are reacting...';
+  await new Promise((resolve) => window.setTimeout(resolve, 1200));
   const details = await window.ArcaneChemistry?.getReactionDetails(first, second);
+  const reaction = details?.reaction || fallbackReaction;
 
-  if (details && details.reaction) {
-    updateCauldronReaction(details.reaction);
-  } else {
-    updateCauldronReaction(reaction);
+  updateCauldronReaction(reaction);
+  setBrewingState('resultDisplayed', 'brew complete');
+  if (dataSourceElement) dataSourceElement.textContent = details?.fallback ? 'Curated fallback dataset' : 'PubChem data retrieved';
+  if (reactionResultElement) {
+    reactionResultElement.innerHTML = `<strong>${reaction.label}</strong><br>${reaction.description}<br><br>Temperature change: ${reaction.tempChange > 0 ? '+' : ''}${reaction.tempChange}°C<br>Effect: ${reaction.effect}<br>${details ? `${details.first.formula || 'Unknown'} + ${details.second.formula || 'Unknown'}` : 'Formula data unavailable'}`;
   }
+  brewHistory.unshift({ ingredients: `${first} + ${second}`, label: reaction.label });
+  brewHistory = brewHistory.slice(0, 4);
+  renderHistory();
 
-  brewingState = 'resultDisplayed';
+  document.querySelectorAll('.ingredient-btn').forEach((button) => { button.disabled = true; });
 }
 
 function attachIngredientInteractions() {
@@ -239,6 +283,11 @@ function attachIngredientInteractions() {
     button.addEventListener('click', () => {
       const ingredient = button.dataset.ingredient;
       if (!ingredient) return;
+
+      if (!cauldronRoot || brewingState === 'awaitingPlacement' || brewingState === 'brewing') {
+        setStatus('Place the cauldron before adding ingredients to the potion.');
+        return;
+      }
 
       if (selectedIngredients.includes(ingredient)) {
         selectedIngredients = selectedIngredients.filter((item) => item !== ingredient);
@@ -256,7 +305,11 @@ function attachIngredientInteractions() {
       button.classList.add('selected');
 
       if (selectedIngredients.length === 2) {
+        setBrewingState('ingredientBSelected', 'two reagents selected');
         handleMix();
+      } else {
+        setBrewingState('ingredientASelected', 'choose a second reagent');
+        setStatus(`${ingredient} added to the cauldron. Choose one more reagent.`);
       }
     });
   });
@@ -341,6 +394,24 @@ async function placeCauldronAtReticle() {
   cauldronRoot.position.setFromMatrixPosition(reticle.matrix);
   cauldronRoot.visible = true;
   cauldronRoot.position.y += 0.02;
+  setIngredientAvailability(true);
+  setBrewingState('ready', 'cauldron placed');
+  if (ingredientHelp) ingredientHelp.textContent = 'Choose your first reagent from the apothecary shelf.';
+  setStatus('The cauldron is ready. Choose two reagents to begin brewing.');
+}
+
+function resetBrew() {
+  if (!cauldronRoot) return;
+  clearIngredientSelection();
+  cauldronRoot.userData.liquid.material.color.setHex(0x6ee7b7);
+  cauldronRoot.userData.liquid.material.emissive.setHex(0x113322);
+  cauldronRoot.userData.steam.visible = false;
+  setIngredientAvailability(true);
+  setBrewingState('ready', 'cauldron cleared');
+  if (ingredientHelp) ingredientHelp.textContent = 'Choose your first reagent from the apothecary shelf.';
+  if (reactionResultElement) reactionResultElement.textContent = 'The cauldron is clear. Begin a new brew.';
+  if (dataSourceElement) dataSourceElement.textContent = 'Curated fallback ready';
+  setStatus('The cauldron has been cleared. Choose two new reagents.');
 }
 
 window.addEventListener('click', (event) => {
@@ -354,6 +425,12 @@ window.addEventListener('click', (event) => {
   }
 });
 
+if (resetBrewButton) {
+  resetBrewButton.addEventListener('click', resetBrew);
+}
+
+setIngredientAvailability(false);
+renderHistory();
 attachIngredientInteractions();
 
 window.addEventListener('resize', () => {
