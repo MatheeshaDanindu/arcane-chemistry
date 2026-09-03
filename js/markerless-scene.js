@@ -28,6 +28,10 @@ const reactionResultElement = document.getElementById('reaction-result');
 const reactionHistoryElement = document.getElementById('reaction-history');
 const dataSourceElement = document.getElementById('data-source');
 const resetBrewButton = document.getElementById('reset-brew-button');
+const brewProgress = document.getElementById('brew-progress');
+const brewProgressFill = document.getElementById('brew-progress-fill');
+const brewProgressValue = document.getElementById('brew-progress-value');
+const brewProgressTrack = brewProgress?.querySelector('.brew-progress-track');
 
 function setStatus(message) {
   if (statusElement) statusElement.textContent = message;
@@ -55,6 +59,36 @@ function renderHistory() {
   reactionHistoryElement.innerHTML = brewHistory.length
     ? brewHistory.map((entry) => `<div class="history-entry">${entry.ingredients} → ${entry.label}</div>`).join('')
     : 'Your completed brews will appear here.';
+}
+
+function updateBrewProgress(value) {
+  const progress = Math.max(0, Math.min(100, Math.round(value)));
+  if (brewProgressFill) brewProgressFill.style.width = `${progress}%`;
+  if (brewProgressValue) brewProgressValue.textContent = `${progress}%`;
+  if (brewProgressTrack) brewProgressTrack.setAttribute('aria-valuenow', String(progress));
+}
+
+function setBrewProgressVisible(visible) {
+  if (brewProgress) brewProgress.hidden = !visible;
+}
+
+function animateBrewing(duration) {
+  setBrewProgressVisible(true);
+  updateBrewProgress(0);
+
+  return new Promise((resolve) => {
+    const startedAt = performance.now();
+    const tick = (now) => {
+      const progress = Math.min(100, ((now - startedAt) / duration) * 100);
+      updateBrewProgress(progress);
+      if (progress < 100) {
+        window.requestAnimationFrame(tick);
+      } else {
+        resolve();
+      }
+    };
+    window.requestAnimationFrame(tick);
+  });
 }
 
 async function startCameraFallback() {
@@ -328,12 +362,14 @@ async function handleMix() {
   setBrewingState('brewing', 'brewing your potion');
   setStatus('The cauldron is stirring... consult the stars while the brew settles.');
   if (ingredientHelp) ingredientHelp.textContent = 'Your reagents are reacting...';
-  await new Promise((resolve) => window.setTimeout(resolve, 1200));
+  cauldronRoot.userData.steam.visible = true;
+  await animateBrewing(1800);
   const details = await window.ArcaneChemistry?.getReactionDetails(first, second);
   const reaction = details?.reaction || fallbackReaction;
 
   updateCauldronReaction(reaction);
   setBrewingState('resultDisplayed', 'brew complete');
+  setBrewProgressVisible(false);
   if (dataSourceElement) dataSourceElement.textContent = details?.fallback ? 'Curated fallback dataset' : 'PubChem data retrieved';
   if (reactionResultElement) {
     reactionResultElement.innerHTML = `<strong>${reaction.label}</strong><br>${reaction.description}<br><br>Temperature change: ${reaction.tempChange > 0 ? '+' : ''}${reaction.tempChange}°C<br>Effect: ${reaction.effect}<br>${details ? `${details.first.formula || 'Unknown'} + ${details.second.formula || 'Unknown'}` : 'Formula data unavailable'}`;
@@ -450,7 +486,10 @@ renderer.setAnimationLoop((time) => {
   }
 
   if (cauldronRoot) {
-    cauldronRoot.rotation.y += 0.003;
+    cauldronRoot.rotation.y += brewingState === 'brewing' ? 0.025 : 0.003;
+    if (brewingState === 'brewing') {
+      cauldronRoot.position.y = cauldronRoot.userData.restY + Math.sin(time * 0.012) * 0.0008;
+    }
     const steam = cauldronRoot.userData.steam;
     if (steam) {
       steam.rotation.y += 0.01;
@@ -478,6 +517,7 @@ async function placeCauldronAtReticle() {
   cauldronRoot.position.setFromMatrixPosition(reticle.matrix);
   cauldronRoot.visible = true;
   cauldronRoot.position.y += 0.02;
+  cauldronRoot.userData.restY = cauldronRoot.position.y;
   setIngredientAvailability(true);
   setBrewingState('ready', 'cauldron placed');
   if (ingredientHelp) ingredientHelp.textContent = 'Choose your first reagent from the apothecary shelf.';
@@ -495,6 +535,8 @@ function resetBrew() {
   if (ingredientHelp) ingredientHelp.textContent = 'Choose your first reagent from the apothecary shelf.';
   if (reactionResultElement) reactionResultElement.textContent = 'The cauldron is clear. Begin a new brew.';
   if (dataSourceElement) dataSourceElement.textContent = 'Curated fallback ready';
+  setBrewProgressVisible(false);
+  updateBrewProgress(0);
   setStatus('The cauldron has been cleared. Choose two new reagents.');
 }
 

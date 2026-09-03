@@ -30,6 +30,15 @@
     <div class="ingredient-ui">
       <div class="ingredient-header">Apothecary Ingredients</div>
       <p class="ingredient-help" id="ingredient-help">Place your cauldron before choosing two reagents.</p>
+      <div class="brew-progress" id="brew-progress" hidden>
+        <div class="brew-progress-label">
+          <span>Brewing enchantment</span>
+          <strong id="brew-progress-value">0%</strong>
+        </div>
+        <div class="brew-progress-track" role="progressbar" aria-label="Brewing progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="brew-progress-fill" class="brew-progress-fill"></div>
+        </div>
+      </div>
       <div class="ingredient-grid">
         <button class="ingredient-btn" data-ingredient="vinegar" disabled>Vinegar</button>
         <button class="ingredient-btn" data-ingredient="baking_soda" disabled>Baking Soda</button>

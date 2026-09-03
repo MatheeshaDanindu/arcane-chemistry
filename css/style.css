@@ -246,6 +246,41 @@ h1 {
   margin: -4px 0 12px;
 }
 
+.brew-progress {
+  margin: 0 0 12px;
+}
+
+.brew-progress-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: var(--gold);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.brew-progress-label strong {
+  color: var(--success);
+}
+
+.brew-progress-track {
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(244, 211, 94, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.brew-progress-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--cyan), var(--gold), var(--success));
+  box-shadow: 0 0 12px rgba(126, 240, 197, 0.8);
+  transition: width 0.12s linear;
+}
+
 .ingredient-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(110px, 1fr));
