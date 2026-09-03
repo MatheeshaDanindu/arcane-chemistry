@@ -28,6 +28,10 @@ const reactionResultElement = document.getElementById('reaction-result');
 const reactionHistoryElement = document.getElementById('reaction-history');
 const dataSourceElement = document.getElementById('data-source');
 const resetBrewButton = document.getElementById('reset-brew-button');
+const brewProgress = document.getElementById('brew-progress');
+const brewProgressFill = document.getElementById('brew-progress-fill');
+const brewProgressValue = document.getElementById('brew-progress-value');
+const brewProgressTrack = brewProgress?.querySelector('.brew-progress-track');
 
 function setStatus(message) {
   if (statusElement) statusElement.textContent = message;
@@ -55,6 +59,36 @@ function renderHistory() {
   reactionHistoryElement.innerHTML = brewHistory.length
     ? brewHistory.map((entry) => `<div class="history-entry">${entry.ingredients} → ${entry.label}</div>`).join('')
     : 'Your completed brews will appear here.';
+}
+
+function updateBrewProgress(value) {
+  const progress = Math.max(0, Math.min(100, Math.round(value)));
+  if (brewProgressFill) brewProgressFill.style.width = `${progress}%`;
+  if (brewProgressValue) brewProgressValue.textContent = `${progress}%`;
+  if (brewProgressTrack) brewProgressTrack.setAttribute('aria-valuenow', String(progress));
+}
+
+function setBrewProgressVisible(visible) {
+  if (brewProgress) brewProgress.hidden = !visible;
+}
+
+function animateBrewing(duration) {
+  setBrewProgressVisible(true);
+  updateBrewProgress(0);
+
+  return new Promise((resolve) => {
+    const startedAt = performance.now();
+    const tick = (now) => {
+      const progress = Math.min(100, ((now - startedAt) / duration) * 100);
+      updateBrewProgress(progress);
+      if (progress < 100) {
+        window.requestAnimationFrame(tick);
+      } else {
+        resolve();
+      }
+    };
+    window.requestAnimationFrame(tick);
+  });
 }
 
 async function startCameraFallback() {
@@ -120,6 +154,11 @@ let brewingState = 'awaitingPlacement';
 let selectedIngredients = [];
 let brewHistory = [];
 let placementLocked = false;
+let ingredientJarsGroup = null;
+let ingredientJarTemplate = null;
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const xrController = renderer.xr.getController(0);
 
 const loader = new GLTFLoader();
 const reactionAudio = {
@@ -135,6 +174,45 @@ function playReactionAudio(effect) {
   sound.volume = 0.45;
   sound.play().catch(() => {
     console.warn('Reaction audio could not start automatically.');
+  });
+}
+
+function createGlowParticleMaterial(color, size, opacity) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      particleColor: { value: new THREE.Color(color) },
+      particleSize: { value: size },
+      particleOpacity: { value: opacity },
+      time: { value: 0 }
+    },
+    vertexShader: `
+      uniform float particleSize;
+      uniform float time;
+      void main() {
+        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+        float drift = sin(time * 1.4 + position.y * 8.0) * 0.012;
+        worldPosition.x += drift;
+        worldPosition.z += cos(time * 1.1 + position.x * 7.0) * 0.01;
+        vec4 viewPosition = viewMatrix * worldPosition;
+        gl_Position = projectionMatrix * viewPosition;
+        gl_PointSize = particleSize * (190.0 / max(1.0, -viewPosition.z));
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 particleColor;
+      uniform float particleOpacity;
+      void main() {
+        vec2 point = gl_PointCoord - vec2(0.5);
+        float distanceFromCenter = length(point);
+        float softEdge = 1.0 - smoothstep(0.08, 0.5, distanceFromCenter);
+        float halo = 1.0 - smoothstep(0.18, 0.5, distanceFromCenter);
+        if (distanceFromCenter > 0.5) discard;
+        gl_FragColor = vec4(particleColor * (1.0 + halo * 0.8), softEdge * particleOpacity);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
   });
 }
 
@@ -163,7 +241,7 @@ function loadPlaceholderCauldron() {
     positions[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
   }
   steamGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const steamMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.02, transparent: true, opacity: 0.7 });
+  const steamMaterial = createGlowParticleMaterial(0xf4d35e, 0.028, 0.82);
   const steam = new THREE.Points(steamGeometry, steamMaterial);
   steam.position.y = 0.3;
   steam.visible = false;
@@ -171,6 +249,7 @@ function loadPlaceholderCauldron() {
 
   group.userData.steam = steam;
   group.userData.liquid = liquid;
+  group.userData.steamMaterial = steamMaterial;
   return group;
 }
 
@@ -181,10 +260,25 @@ function buildCauldronFromModel(model) {
 
   root.updateMatrixWorld(true);
   const modelBounds = new THREE.Box3().setFromObject(root);
-  const modelCenter = modelBounds.getCenter(new THREE.Vector3());
+  let bodyBounds = null;
+  let largestBodyVolume = 0;
+
+  root.traverse((child) => {
+    if (!child.isMesh) return;
+    const childBounds = new THREE.Box3().setFromObject(child);
+    const childSize = childBounds.getSize(new THREE.Vector3());
+    const childVolume = childSize.x * childSize.y * childSize.z;
+    if (childVolume > largestBodyVolume) {
+      largestBodyVolume = childVolume;
+      bodyBounds = childBounds;
+    }
+  });
+
+  const openingBounds = bodyBounds || modelBounds;
+  const modelCenter = openingBounds.getCenter(new THREE.Vector3());
   const liquidWorldPosition = new THREE.Vector3(
     modelCenter.x,
-    modelBounds.max.y - (modelBounds.max.y - modelBounds.min.y) * 0.16,
+    openingBounds.max.y - (openingBounds.max.y - openingBounds.min.y) * 0.16,
     modelCenter.z
   );
   root.worldToLocal(liquidWorldPosition);
@@ -206,7 +300,7 @@ function buildCauldronFromModel(model) {
     positions[i * 3 + 2] = (Math.random() - 0.5) * 0.35;
   }
   steamGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const steamMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.025, transparent: true, opacity: 0.75 });
+  const steamMaterial = createGlowParticleMaterial(0xf4d35e, 0.032, 0.86);
   const steam = new THREE.Points(steamGeometry, steamMaterial);
   steam.position.y = 0.34;
   steam.visible = false;
@@ -214,6 +308,7 @@ function buildCauldronFromModel(model) {
 
   root.userData.steam = steam;
   root.userData.liquid = liquid;
+  root.userData.steamMaterial = steamMaterial;
   return root;
 }
 
@@ -226,6 +321,101 @@ function loadCauldronModel() {
       () => resolve(loadPlaceholderCauldron())
     );
   });
+}
+
+function createJarLabel(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 64;
+  const context = canvas.getContext('2d');
+  context.fillStyle = 'rgba(10, 16, 28, 0.88)';
+  context.roundRect(3, 3, 250, 58, 12);
+  context.fill();
+  context.font = 'bold 22px Arial';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillStyle = '#f4d35e';
+  context.fillText(text, 128, 32);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }));
+  label.scale.set(0.32, 0.08, 1);
+  label.position.y = 0.28;
+  return label;
+}
+
+function createIngredientJar(ingredient, index, angle) {
+  const jar = ingredientJarTemplate.clone(true);
+  jar.scale.setScalar(0.16);
+  jar.position.set(Math.cos(angle) * 0.62, 0.02, Math.sin(angle) * 0.62);
+  jar.rotation.y = -angle;
+  jar.userData.ingredient = ingredient;
+  jar.userData.baseY = jar.position.y;
+  jar.userData.phase = index * 0.8;
+  jar.userData.selectable = true;
+  jar.add(createJarLabel(window.ArcaneChemistry?.ingredientDetails?.[ingredient]?.label || ingredient));
+
+  const halo = new THREE.Mesh(
+    new THREE.CircleGeometry(0.12, 24),
+    new THREE.MeshBasicMaterial({ color: 0x77d5f8, transparent: true, opacity: 0.16, side: THREE.DoubleSide })
+  );
+  halo.rotation.x = -Math.PI / 2;
+  halo.position.y = -0.01;
+  halo.userData.jarHalo = true;
+  jar.add(halo);
+  return jar;
+}
+
+async function addIngredientJars() {
+  if (!cauldronRoot || ingredientJarsGroup) return;
+
+  try {
+    const gltf = await new Promise((resolve, reject) => {
+      loader.load('assets/models/ingredient-jar.glb', resolve, undefined, reject);
+    });
+    ingredientJarTemplate = gltf.scene;
+  } catch (error) {
+    console.warn('Ingredient jar model could not load:', error);
+    return;
+  }
+
+  ingredientJarsGroup = new THREE.Group();
+  ingredientJarsGroup.name = 'apothecary-jars';
+  cauldronRoot.add(ingredientJarsGroup);
+
+  const ingredients = ['vinegar', 'baking_soda', 'copper_sulfate', 'iron', 'hydrochloric_acid', 'sodium_hydroxide'];
+  ingredients.forEach((ingredient, index) => {
+    const jar = createIngredientJar(ingredient, index, (index / ingredients.length) * Math.PI * 2);
+    ingredientJarsGroup.add(jar);
+  });
+}
+
+function selectIngredientFromJar(ingredient) {
+  const button = document.querySelector(`.ingredient-btn[data-ingredient="${ingredient}"]`);
+  if (button && !button.disabled) button.click();
+}
+
+function handleJarPointer(event) {
+  if (!ingredientJarsGroup || brewingState === 'brewing' || brewingState === 'resultDisplayed') return;
+  const bounds = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+  pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const intersections = raycaster.intersectObjects(ingredientJarsGroup.children, true);
+  const jar = intersections.find((hit) => {
+    let current = hit.object;
+    while (current && current !== ingredientJarsGroup) {
+      if (current.userData.selectable) return true;
+      current = current.parent;
+    }
+    return false;
+  });
+  if (!jar) return;
+
+  let selectedJar = jar.object;
+  while (selectedJar.parent && !selectedJar.userData.selectable) selectedJar = selectedJar.parent;
+  selectIngredientFromJar(selectedJar.userData.ingredient);
 }
 
 function updateCauldronReaction(reaction) {
@@ -272,12 +462,14 @@ async function handleMix() {
   setBrewingState('brewing', 'brewing your potion');
   setStatus('The cauldron is stirring... consult the stars while the brew settles.');
   if (ingredientHelp) ingredientHelp.textContent = 'Your reagents are reacting...';
-  await new Promise((resolve) => window.setTimeout(resolve, 1200));
+  cauldronRoot.userData.steam.visible = true;
+  await animateBrewing(1800);
   const details = await window.ArcaneChemistry?.getReactionDetails(first, second);
   const reaction = details?.reaction || fallbackReaction;
 
   updateCauldronReaction(reaction);
   setBrewingState('resultDisplayed', 'brew complete');
+  setBrewProgressVisible(false);
   if (dataSourceElement) dataSourceElement.textContent = details?.fallback ? 'Curated fallback dataset' : 'PubChem data retrieved';
   if (reactionResultElement) {
     reactionResultElement.innerHTML = `<strong>${reaction.label}</strong><br>${reaction.description}<br><br>Temperature change: ${reaction.tempChange > 0 ? '+' : ''}${reaction.tempChange}°C<br>Effect: ${reaction.effect}<br>${details ? `${details.first.formula || 'Unknown'} + ${details.second.formula || 'Unknown'}` : 'Formula data unavailable'}`;
@@ -394,11 +586,30 @@ renderer.setAnimationLoop((time) => {
   }
 
   if (cauldronRoot) {
-    cauldronRoot.rotation.y += 0.003;
+    cauldronRoot.rotation.y += brewingState === 'brewing' ? 0.025 : 0.003;
+    if (brewingState === 'brewing') {
+      cauldronRoot.position.y = cauldronRoot.userData.restY + Math.sin(time * 0.012) * 0.0008;
+    }
     const steam = cauldronRoot.userData.steam;
     if (steam) {
       steam.rotation.y += 0.01;
     }
+    const steamMaterial = cauldronRoot.userData.steamMaterial;
+    if (steamMaterial) {
+      steamMaterial.uniforms.time.value = time * 0.001;
+    }
+  }
+
+  if (ingredientJarsGroup) {
+    ingredientJarsGroup.children.forEach((jar) => {
+      jar.position.y = jar.userData.baseY + Math.sin(time * 0.002 + jar.userData.phase) * 0.012;
+      jar.rotation.y += 0.002;
+      jar.traverse((child) => {
+        if (child.userData.jarHalo && child.material) {
+          child.material.opacity = selectedIngredients.includes(jar.userData.ingredient) ? 0.62 : 0.16;
+        }
+      });
+    });
   }
 });
 
@@ -418,10 +629,12 @@ async function placeCauldronAtReticle() {
   cauldronRoot.position.setFromMatrixPosition(reticle.matrix);
   cauldronRoot.visible = true;
   cauldronRoot.position.y += 0.02;
+  cauldronRoot.userData.restY = cauldronRoot.position.y;
   setIngredientAvailability(true);
   setBrewingState('ready', 'cauldron placed');
   if (ingredientHelp) ingredientHelp.textContent = 'Choose your first reagent from the apothecary shelf.';
   setStatus('The cauldron is ready. Choose two reagents to begin brewing.');
+  addIngredientJars();
 }
 
 function resetBrew() {
@@ -435,6 +648,8 @@ function resetBrew() {
   if (ingredientHelp) ingredientHelp.textContent = 'Choose your first reagent from the apothecary shelf.';
   if (reactionResultElement) reactionResultElement.textContent = 'The cauldron is clear. Begin a new brew.';
   if (dataSourceElement) dataSourceElement.textContent = 'Curated fallback ready';
+  setBrewProgressVisible(false);
+  updateBrewProgress(0);
   setStatus('The cauldron has been cleared. Choose two new reagents.');
 }
 
@@ -452,6 +667,18 @@ window.addEventListener('click', (event) => {
 if (resetBrewButton) {
   resetBrewButton.addEventListener('click', resetBrew);
 }
+
+renderer.domElement.addEventListener('pointerup', handleJarPointer);
+xrController.addEventListener('select', () => {
+  if (!ingredientJarsGroup || brewingState === 'brewing' || brewingState === 'resultDisplayed') return;
+  raycaster.setFromXRController(xrController);
+  const intersections = raycaster.intersectObjects(ingredientJarsGroup.children, true);
+  if (intersections.length === 0) return;
+  let selectedJar = intersections[0].object;
+  while (selectedJar.parent && !selectedJar.userData.selectable) selectedJar = selectedJar.parent;
+  selectIngredientFromJar(selectedJar.userData.ingredient);
+});
+scene.add(xrController);
 
 setIngredientAvailability(false);
 renderHistory();
