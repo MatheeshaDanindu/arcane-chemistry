@@ -179,6 +179,7 @@ let ingredientJarsGroup = null;
 let ingredientJarTemplate = null;
 let reactionVisualState = null;
 let wizardPropsGroup = null;
+let ingredientRackGroup = null;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 const xrController = renderer.xr.getController(0);
@@ -410,7 +411,7 @@ async function addWizardingProps() {
   ]);
 
   const props = [
-    { model: witch, height: 1.62, position: [-0.7, 0, 0.12], rotation: [0, 0.35, 0] },
+    { model: witch, height: 2.62, position: [-0.7, 0, 0.12], rotation: [0, 0.35, 0] },
     { model: spellbook, height: 0.22, position: [-0.15, 0.01, -0.62], rotation: [-0.15, 0.1, 0] },
     { model: wand, height: 0.34, position: [0.65, 0.16, 0.18], rotation: [0.35, 0.2, -0.8] },
     { model: candle, height: 0.27, position: [0.55, 0, -0.48], rotation: [0, 0.2, 0] }
@@ -485,7 +486,7 @@ function createIngredientJar(ingredient, index, angle) {
   return jar;
 }
 
-function createFallbackIngredientJar(ingredient, index, angle) {
+function createFallbackIngredientJar(ingredient, index, position) {
   const jar = new THREE.Group();
   const palette = [0x7ef0c5, 0xf4d35e, 0x4cc9f0, 0xb87333, 0xff8fab, 0xc77dff];
   const material = new THREE.MeshStandardMaterial({ color: 0x9aa7b8, metalness: 0.25, roughness: 0.3 });
@@ -499,8 +500,8 @@ function createFallbackIngredientJar(ingredient, index, angle) {
   const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.065, 16), new THREE.MeshStandardMaterial({ color: 0x9b7653 }));
   cork.position.y = 0.235;
   jar.add(cork);
-  jar.position.set(Math.cos(angle) * 0.82, 0.08, Math.sin(angle) * 0.82);
-  jar.rotation.y = -angle;
+  jar.position.set(...position);
+  jar.rotation.y = 0;
   jar.userData.ingredient = ingredient;
   jar.userData.baseY = jar.position.y;
   jar.userData.phase = index * 0.8;
@@ -509,19 +510,48 @@ function createFallbackIngredientJar(ingredient, index, angle) {
   return jar;
 }
 
+function createIngredientRack() {
+  const rack = new THREE.Group();
+  const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.8 });
+  const shelfMaterial = new THREE.MeshStandardMaterial({ color: 0x9b7653, roughness: 0.75 });
+
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.9, 0.06), woodMaterial);
+  back.position.set(0, 0.47, -0.1);
+  rack.add(back);
+
+  [-0.04, 0.25, 0.54, 0.83].forEach((height) => {
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.045, 0.25), shelfMaterial);
+    shelf.position.set(0, height, 0.02);
+    rack.add(shelf);
+  });
+
+  [-0.42, 0.42].forEach((x) => {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.98, 0.08), woodMaterial);
+    post.position.set(x, 0.45, 0.02);
+    rack.add(post);
+  });
+
+  rack.position.set(0.82, 0, 0);
+  rack.userData.isRack = true;
+  return rack;
+}
+
 async function addIngredientJars() {
   if (!cauldronRoot || ingredientJarsGroup) return;
 
   setStatus('The apothecary shelf is materialising around your cauldron...');
   const ingredients = ['vinegar', 'baking_soda', 'copper_sulfate', 'iron', 'hydrochloric_acid', 'sodium_hydroxide'];
 
+  ingredientRackGroup = createIngredientRack();
+  cauldronRoot.add(ingredientRackGroup);
   ingredientJarsGroup = new THREE.Group();
   ingredientJarsGroup.name = 'apothecary-jars';
-  cauldronRoot.add(ingredientJarsGroup);
+  ingredientRackGroup.add(ingredientJarsGroup);
 
   ingredients.forEach((ingredient, index) => {
-    const angle = (index / ingredients.length) * Math.PI * 2;
-    const jar = createFallbackIngredientJar(ingredient, index, angle);
+    const column = index % 2;
+    const row = Math.floor(index / 2);
+    const jar = createFallbackIngredientJar(ingredient, index, [-0.22 + column * 0.44, 0.08 + row * 0.29, 0.1]);
     ingredientJarsGroup.add(jar);
   });
   setStatus('The apothecary shelf is ready. Tap a jar or use the ingredient menu.');
@@ -679,6 +709,7 @@ renderer.xr.addEventListener('sessionstart', async () => {
   ingredientJarsGroup = null;
   ingredientJarTemplate = null;
   wizardPropsGroup = null;
+  ingredientRackGroup = null;
   setIngredientAvailability(false);
   clearIngredientSelection();
   setBrewingState('awaitingPlacement', 'awaiting placement');
