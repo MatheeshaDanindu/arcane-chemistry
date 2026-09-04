@@ -1,6 +1,6 @@
 const markerStatus = document.getElementById('marker-status');
 const sceneEl = document.querySelector('a-scene');
-const markerEl = document.getElementById('custom-marker');
+const markerEl = document.getElementById('hiro-marker');
 const spellbook = document.getElementById('spellbook');
 const spellbookEffects = document.getElementById('spellbook-effects');
 const runeRing = document.getElementById('rune-ring');
