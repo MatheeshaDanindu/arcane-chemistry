@@ -178,6 +178,7 @@ let placementLocked = false;
 let ingredientJarsGroup = null;
 let ingredientJarTemplate = null;
 let reactionVisualState = null;
+let wizardPropsGroup = null;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 const xrController = renderer.xr.getController(0);
@@ -369,6 +370,66 @@ function loadCauldronModel() {
       () => resolve(loadPlaceholderCauldron())
     );
   });
+}
+
+async function loadOptionalModel(path) {
+  try {
+    const gltf = await loader.loadAsync(path);
+    return gltf.scene;
+  } catch (error) {
+    console.warn(`Optional model could not load: ${path}`, error);
+    return null;
+  }
+}
+
+function normalizeCompanionModel(model, height) {
+  const wrapper = new THREE.Group();
+  const bounds = new THREE.Box3().setFromObject(model);
+  const size = bounds.getSize(new THREE.Vector3());
+  const center = bounds.getCenter(new THREE.Vector3());
+  const scale = height / Math.max(size.y, 0.001);
+
+  model.scale.setScalar(scale);
+  model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+  wrapper.add(model);
+  return wrapper;
+}
+
+async function addWizardingProps() {
+  if (!cauldronRoot || wizardPropsGroup) return;
+
+  wizardPropsGroup = new THREE.Group();
+  wizardPropsGroup.name = 'wizarding-workstation';
+  cauldronRoot.add(wizardPropsGroup);
+
+  const [witch, spellbook, wand, candle] = await Promise.all([
+    loadOptionalModel('assets/models/witch.glb'),
+    loadOptionalModel('assets/models/spellbook.glb'),
+    loadOptionalModel('assets/models/wand.glb'),
+    loadOptionalModel('assets/models/candle.glb')
+  ]);
+
+  const props = [
+    { model: witch, height: 0.62, position: [-0.7, 0, 0.12], rotation: [0, 0.35, 0] },
+    { model: spellbook, height: 0.22, position: [-0.15, 0.01, -0.62], rotation: [-0.15, 0.1, 0] },
+    { model: wand, height: 0.34, position: [0.65, 0.16, 0.18], rotation: [0.35, 0.2, -0.8] },
+    { model: candle, height: 0.27, position: [0.55, 0, -0.48], rotation: [0, 0.2, 0] }
+  ];
+
+  props.forEach(({ model, height, position, rotation }) => {
+    if (!model) return;
+    const prop = normalizeCompanionModel(model, height);
+    prop.position.set(...position);
+    prop.rotation.set(...rotation);
+    wizardPropsGroup.add(prop);
+  });
+
+  if (candle) {
+    const secondCandle = normalizeCompanionModel(candle.clone(true), 0.22);
+    secondCandle.position.set(-0.58, 0, -0.48);
+    secondCandle.rotation.y = -0.2;
+    wizardPropsGroup.add(secondCandle);
+  }
 }
 
 function createJarLabel(text) {
@@ -617,6 +678,7 @@ renderer.xr.addEventListener('sessionstart', async () => {
   }
   ingredientJarsGroup = null;
   ingredientJarTemplate = null;
+  wizardPropsGroup = null;
   setIngredientAvailability(false);
   clearIngredientSelection();
   setBrewingState('awaitingPlacement', 'awaiting placement');
@@ -726,6 +788,7 @@ async function placeCauldronAtReticle() {
   if (ingredientHelp) ingredientHelp.textContent = 'Choose your first reagent from the apothecary shelf.';
   setStatus('The cauldron is ready. Choose two reagents to begin brewing.');
   addIngredientJars();
+  addWizardingProps();
 }
 
 function resetBrew() {
