@@ -762,6 +762,19 @@ renderer.xr.addEventListener('sessionend', () => {
   hitTestSource = null;
   hitTestSourceRequested = false;
   reticle.visible = false;
+  placementLocked = false;
+  setIngredientAvailability(false);
+  clearIngredientSelection();
+  setBrewProgressVisible(false);
+  updateBrewProgress(0);
+  setBrewingState('awaitingPlacement', 'session ended');
+  if (fallbackVideo) {
+    fallbackVideo.pause();
+    fallbackVideo.srcObject = null;
+    fallbackVideo.style.display = 'none';
+  }
+  if (reactionResultElement) reactionResultElement.textContent = 'The session has ended. Start AR to begin a new potion lesson.';
+  if (ingredientHelp) ingredientHelp.textContent = 'Start AR, scan a surface, and place your cauldron to begin.';
   setStatus('AR session ended. Tap START AR to try again.');
 });
 
