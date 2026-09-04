@@ -191,21 +191,25 @@ const reactionAudio = {
 const brewingAudio = new Audio('assets/audio/brewing.mp3');
 brewingAudio.loop = true;
 brewingAudio.volume = 0.28;
+brewingAudio.preload = 'auto';
+Object.values(reactionAudio).forEach((sound) => {
+  sound.preload = 'auto';
+});
 
 function playReactionAudio(effect) {
   const sound = reactionAudio[effect];
   if (!sound) return;
   sound.currentTime = 0;
   sound.volume = 0.45;
-  sound.play().catch(() => {
-    console.warn('Reaction audio could not start automatically.');
+  sound.play().catch((error) => {
+    console.warn(`Reaction audio could not start (${error.name}).`, sound.src);
   });
 }
 
 function startBrewingAudio() {
   brewingAudio.currentTime = 0;
-  brewingAudio.play().catch(() => {
-    console.warn('Brewing audio could not start automatically.');
+  brewingAudio.play().catch((error) => {
+    console.warn(`Brewing audio could not start (${error.name}).`, brewingAudio.src);
   });
 }
 
@@ -391,8 +395,17 @@ function createJarLabel(text) {
 
 function createIngredientJar(ingredient, index, angle) {
   const jar = ingredientJarTemplate.clone(true);
-  jar.scale.setScalar(0.16);
-  jar.position.set(Math.cos(angle) * 0.62, 0.02, Math.sin(angle) * 0.62);
+  const jarBounds = new THREE.Box3().setFromObject(jar);
+  const jarSize = jarBounds.getSize(new THREE.Vector3());
+  const jarCenter = jarBounds.getCenter(new THREE.Vector3());
+  const jarHeight = Math.max(jarSize.y, 0.001);
+  const jarScale = 0.2 / jarHeight;
+  jar.scale.setScalar(jarScale);
+  jar.position.set(
+    Math.cos(angle) * 0.62 - jarCenter.x * jarScale,
+    0.02 - jarCenter.y * jarScale,
+    Math.sin(angle) * 0.62 - jarCenter.z * jarScale
+  );
   jar.rotation.y = -angle;
   jar.userData.ingredient = ingredient;
   jar.userData.baseY = jar.position.y;
@@ -411,8 +424,35 @@ function createIngredientJar(ingredient, index, angle) {
   return jar;
 }
 
+function createFallbackIngredientJar(ingredient, index, angle) {
+  const jar = new THREE.Group();
+  const palette = [0x7ef0c5, 0xf4d35e, 0x4cc9f0, 0xb87333, 0xff8fab, 0xc77dff];
+  const material = new THREE.MeshStandardMaterial({ color: 0x9aa7b8, metalness: 0.25, roughness: 0.3 });
+  const liquidMaterial = new THREE.MeshStandardMaterial({ color: palette[index], emissive: palette[index], emissiveIntensity: 0.25, transparent: true, opacity: 0.86 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.13, 20), material);
+  body.position.y = 0.09;
+  jar.add(body);
+  const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.07, 0.08, 20), liquidMaterial);
+  liquid.position.y = 0.08;
+  jar.add(liquid);
+  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.055, 16), new THREE.MeshStandardMaterial({ color: 0x9b7653 }));
+  cork.position.y = 0.18;
+  jar.add(cork);
+  jar.position.set(Math.cos(angle) * 0.62, 0.02, Math.sin(angle) * 0.62);
+  jar.rotation.y = -angle;
+  jar.userData.ingredient = ingredient;
+  jar.userData.baseY = jar.position.y;
+  jar.userData.phase = index * 0.8;
+  jar.userData.selectable = true;
+  jar.add(createJarLabel(window.ArcaneChemistry?.ingredientDetails?.[ingredient]?.label || ingredient));
+  return jar;
+}
+
 async function addIngredientJars() {
   if (!cauldronRoot || ingredientJarsGroup) return;
+
+  setStatus('The apothecary shelf is materialising around your cauldron...');
+  const ingredients = ['vinegar', 'baking_soda', 'copper_sulfate', 'iron', 'hydrochloric_acid', 'sodium_hydroxide'];
 
   try {
     const gltf = await new Promise((resolve, reject) => {
@@ -421,18 +461,21 @@ async function addIngredientJars() {
     ingredientJarTemplate = gltf.scene;
   } catch (error) {
     console.warn('Ingredient jar model could not load:', error);
-    return;
+    ingredientJarTemplate = null;
   }
 
   ingredientJarsGroup = new THREE.Group();
   ingredientJarsGroup.name = 'apothecary-jars';
   cauldronRoot.add(ingredientJarsGroup);
 
-  const ingredients = ['vinegar', 'baking_soda', 'copper_sulfate', 'iron', 'hydrochloric_acid', 'sodium_hydroxide'];
   ingredients.forEach((ingredient, index) => {
-    const jar = createIngredientJar(ingredient, index, (index / ingredients.length) * Math.PI * 2);
+    const angle = (index / ingredients.length) * Math.PI * 2;
+    const jar = ingredientJarTemplate
+      ? createIngredientJar(ingredient, index, angle)
+      : createFallbackIngredientJar(ingredient, index, angle);
     ingredientJarsGroup.add(jar);
   });
+  setStatus('The apothecary shelf is ready. Tap a jar or use the ingredient menu.');
 }
 
 function selectIngredientFromJar(ingredient) {
@@ -584,6 +627,8 @@ renderer.xr.addEventListener('sessionstart', async () => {
     scene.remove(cauldronRoot);
     cauldronRoot = null;
   }
+  ingredientJarsGroup = null;
+  ingredientJarTemplate = null;
   setIngredientAvailability(false);
   clearIngredientSelection();
   setBrewingState('awaitingPlacement', 'awaiting placement');
