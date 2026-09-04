@@ -191,21 +191,25 @@ const reactionAudio = {
 const brewingAudio = new Audio('assets/audio/brewing.mp3');
 brewingAudio.loop = true;
 brewingAudio.volume = 0.28;
+brewingAudio.preload = 'auto';
+Object.values(reactionAudio).forEach((sound) => {
+  sound.preload = 'auto';
+});
 
 function playReactionAudio(effect) {
   const sound = reactionAudio[effect];
   if (!sound) return;
   sound.currentTime = 0;
   sound.volume = 0.45;
-  sound.play().catch(() => {
-    console.warn('Reaction audio could not start automatically.');
+  sound.play().catch((error) => {
+    console.warn(`Reaction audio could not start (${error.name}).`, sound.src);
   });
 }
 
 function startBrewingAudio() {
   brewingAudio.currentTime = 0;
-  brewingAudio.play().catch(() => {
-    console.warn('Brewing audio could not start automatically.');
+  brewingAudio.play().catch((error) => {
+    console.warn(`Brewing audio could not start (${error.name}).`, brewingAudio.src);
   });
 }
 
