@@ -188,6 +188,9 @@ const reactionAudio = {
   neutralize: new Audio('assets/audio/reaction-neutralize.mp3'),
   displacement: new Audio('assets/audio/reaction-displacement.mp3')
 };
+const brewingAudio = new Audio('assets/audio/brewing.mp3');
+brewingAudio.loop = true;
+brewingAudio.volume = 0.28;
 
 function playReactionAudio(effect) {
   const sound = reactionAudio[effect];
@@ -197,6 +200,18 @@ function playReactionAudio(effect) {
   sound.play().catch(() => {
     console.warn('Reaction audio could not start automatically.');
   });
+}
+
+function startBrewingAudio() {
+  brewingAudio.currentTime = 0;
+  brewingAudio.play().catch(() => {
+    console.warn('Brewing audio could not start automatically.');
+  });
+}
+
+function stopBrewingAudio() {
+  brewingAudio.pause();
+  brewingAudio.currentTime = 0;
 }
 
 function createGlowParticleMaterial(color, size, opacity) {
@@ -485,6 +500,7 @@ async function handleMix() {
   setBrewingState('brewing', 'brewing your potion');
   setStatus('The cauldron is stirring... consult the stars while the brew settles.');
   if (ingredientHelp) ingredientHelp.textContent = 'Your reagents are reacting...';
+  startBrewingAudio();
   const reacts = fallbackReaction.effect !== 'none';
   reactionVisualState = {
     startColor: cauldronRoot.userData.liquid.material.color.clone(),
@@ -497,6 +513,7 @@ async function handleMix() {
   cauldronRoot.userData.steam.visible = false;
   cauldronRoot.userData.steamMaterial.uniforms.particleOpacity.value = 0;
   await animateBrewing(1800);
+  stopBrewingAudio();
   const details = await window.ArcaneChemistry?.getReactionDetails(first, second);
   const reaction = details?.reaction || fallbackReaction;
 
@@ -571,6 +588,7 @@ renderer.xr.addEventListener('sessionstart', async () => {
 });
 
 renderer.xr.addEventListener('sessionend', () => {
+  stopBrewingAudio();
   hitTestSource = null;
   hitTestSourceRequested = false;
   reticle.visible = false;
@@ -672,6 +690,7 @@ async function placeCauldronAtReticle() {
 
 function resetBrew() {
   if (!cauldronRoot) return;
+  stopBrewingAudio();
   clearIngredientSelection();
   cauldronRoot.userData.liquid.material.color.setHex(0x6ee7b7);
   cauldronRoot.userData.liquid.material.emissive.setHex(0x113322);
