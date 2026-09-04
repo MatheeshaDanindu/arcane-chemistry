@@ -58,10 +58,10 @@
         ></a-entity>
 
         <a-entity id="recipe-page" visible="false" position="0 0.38 0.02" rotation="-90 0 0">
-          <a-plane width="0.72" height="0.5" color="#f4e5b2" material="shader: flat; transparent: true; opacity: 0.96"></a-plane>
+          <a-plane class="tappable-recipe-page" width="0.72" height="0.5" color="#f4e5b2" material="shader: flat; transparent: true; opacity: 0.96"></a-plane>
           <a-text id="recipe-title" value="Potion Recipe" align="center" color="#2a183d" width="1.65" position="0 0.16 0.01"></a-text>
           <a-text id="recipe-content" value="Tap the spellbook to reveal a recipe" align="center" color="#3b2850" width="1.35" wrap-count="30" position="0 -0.02 0.01"></a-text>
-          <a-text value="Tap again for the next page" align="center" color="#765c31" width="1.1" position="0 -0.19 0.01"></a-text>
+          <a-text value="Swipe left or right to turn the page" align="center" color="#765c31" width="1.1" position="0 -0.19 0.01"></a-text>
         </a-entity>
 
         <a-entity id="spellbook-effects" visible="false">
@@ -77,7 +77,7 @@
         
       </a-marker>
       
-      <a-entity camera cursor="rayOrigin: mouse; fuse: false"></a-entity>
+      <a-entity camera cursor="rayOrigin: mouse; fuse: false" raycaster="objects: .tappable-spellbook; far: 20"></a-entity>
     </a-scene>
 
     <script src="js/marker-scene.js"></script>
