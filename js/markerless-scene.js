@@ -739,7 +739,6 @@ renderer.setAnimationLoop((time) => {
   }
 
   if (cauldronRoot) {
-    cauldronRoot.rotation.y += brewingState === 'brewing' ? 0.025 : 0.003;
     if (brewingState === 'brewing') {
       cauldronRoot.position.y = cauldronRoot.userData.restY + Math.sin(time * 0.012) * 0.0008;
     }
@@ -756,7 +755,6 @@ renderer.setAnimationLoop((time) => {
   if (ingredientJarsGroup) {
     ingredientJarsGroup.children.forEach((jar) => {
       jar.position.y = jar.userData.baseY + Math.sin(time * 0.002 + jar.userData.phase) * 0.012;
-      jar.rotation.y += 0.002;
       jar.traverse((child) => {
         if (child.userData.jarHalo && child.material) {
           child.material.opacity = selectedIngredients.includes(jar.userData.ingredient) ? 0.62 : 0.16;
