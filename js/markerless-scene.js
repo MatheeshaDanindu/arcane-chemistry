@@ -420,10 +420,10 @@ async function addWizardingProps() {
   ]);
 
   const props = [
-    { model: witch, height: 4.62, position: [-0.7, 0, -0.12], rotation: [0, 0.35, 0] },
-    { model: spellbook, height: 0.22, position: [-0.15, 0.01, 0.62], rotation: [-0.15, 0.1, 0] },
+    { model: witch, height: 4.62, position: [-0.7, 0, -1.12], rotation: [0, 0.35, 0] },
+    { model: spellbook, height: 0.22, position: [-0.15, 1.01, 0.62], rotation: [-0.15, 0.1, 0] },
     { model: wand, height: 0.34, position: [0.65, 0.16, 0.28], rotation: [0.35, 0.2, -0.8] },
-    { model: candle, height: 0.27, position: [0.55, 0, 0.48], rotation: [0, 0.2, 0] }
+    { model: candle, height: 0.27, position: [0.55, 1, 0.48], rotation: [0, 0.2, 0] }
   ];
 
   props.forEach(({ model, height, position, rotation }) => {
@@ -762,6 +762,19 @@ renderer.xr.addEventListener('sessionend', () => {
   hitTestSource = null;
   hitTestSourceRequested = false;
   reticle.visible = false;
+  placementLocked = false;
+  setIngredientAvailability(false);
+  clearIngredientSelection();
+  setBrewProgressVisible(false);
+  updateBrewProgress(0);
+  setBrewingState('awaitingPlacement', 'session ended');
+  if (fallbackVideo) {
+    fallbackVideo.pause();
+    fallbackVideo.srcObject = null;
+    fallbackVideo.style.display = 'none';
+  }
+  if (reactionResultElement) reactionResultElement.textContent = 'The session has ended. Start AR to begin a new potion lesson.';
+  if (ingredientHelp) ingredientHelp.textContent = 'Start AR, scan a surface, and place your cauldron to begin.';
   setStatus('AR session ended. Tap START AR to try again.');
 });
 

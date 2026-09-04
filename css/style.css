@@ -141,6 +141,14 @@ h1 {
   z-index: 1;
 }
 
+.ar-button {
+  position: fixed !important;
+  left: 16px !important;
+  right: auto !important;
+  bottom: 16px !important;
+  z-index: 80 !important;
+}
+
 .ar-page > button {
   z-index: 70 !important;
 }
@@ -431,6 +439,12 @@ h1 {
     right: 10px;
     bottom: 10px;
     width: auto;
+  }
+
+  .ar-button {
+    top: 50%;
+    bottom: auto !important;
+    transform: translateY(-50%);
   }
 
   .potion-log {
