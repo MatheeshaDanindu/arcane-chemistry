@@ -410,7 +410,7 @@ async function addWizardingProps() {
   ]);
 
   const props = [
-    { model: witch, height: 0.62, position: [-0.7, 0, 0.12], rotation: [0, 0.35, 0] },
+    { model: witch, height: 1.62, position: [-0.7, 0, 0.12], rotation: [0, 0.35, 0] },
     { model: spellbook, height: 0.22, position: [-0.15, 0.01, -0.62], rotation: [-0.15, 0.1, 0] },
     { model: wand, height: 0.34, position: [0.65, 0.16, 0.18], rotation: [0.35, 0.2, -0.8] },
     { model: candle, height: 0.27, position: [0.55, 0, -0.48], rotation: [0, 0.2, 0] }
@@ -739,7 +739,6 @@ renderer.setAnimationLoop((time) => {
   }
 
   if (cauldronRoot) {
-    cauldronRoot.rotation.y += brewingState === 'brewing' ? 0.025 : 0.003;
     if (brewingState === 'brewing') {
       cauldronRoot.position.y = cauldronRoot.userData.restY + Math.sin(time * 0.012) * 0.0008;
     }
@@ -756,7 +755,6 @@ renderer.setAnimationLoop((time) => {
   if (ingredientJarsGroup) {
     ingredientJarsGroup.children.forEach((jar) => {
       jar.position.y = jar.userData.baseY + Math.sin(time * 0.002 + jar.userData.phase) * 0.012;
-      jar.rotation.y += 0.002;
       jar.traverse((child) => {
         if (child.userData.jarHalo && child.material) {
           child.material.opacity = selectedIngredients.includes(jar.userData.ingredient) ? 0.62 : 0.16;
