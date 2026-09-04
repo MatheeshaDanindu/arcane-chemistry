@@ -5,10 +5,48 @@ const spellbook = document.getElementById('spellbook');
 const spellbookEffects = document.getElementById('spellbook-effects');
 const runeRing = document.getElementById('rune-ring');
 const magicMotes = Array.from(document.querySelectorAll('.magic-mote'));
+const recipePage = document.getElementById('recipe-page');
+const recipeTitle = document.getElementById('recipe-title');
+const recipeContent = document.getElementById('recipe-content');
+
+const recipes = [
+  {
+    title: 'Fizzing Solution',
+    content: 'Vinegar + Baking Soda\\nCH3COOH + NaHCO3\\nCO2 gas + water + sodium acetate'
+  },
+  {
+    title: 'Copper Displacement',
+    content: 'Copper Sulfate + Iron\\nCuSO4 + Fe\\nIron displaces copper from solution'
+  },
+  {
+    title: 'Neutralising Draught',
+    content: 'Hydrochloric Acid + Sodium Hydroxide\\nHCl + NaOH\\nSalt + water in a neutralisation reaction'
+  }
+];
+let recipeIndex = 0;
 
 const ambientAudio = new Audio('assets/audio/ambient-hum.mp3');
 ambientAudio.loop = true;
 ambientAudio.volume = 0.18;
+
+function showRecipePage() {
+  const recipe = recipes[recipeIndex];
+  if (recipeTitle) recipeTitle.setAttribute('value', recipe.title);
+  if (recipeContent) recipeContent.setAttribute('value', recipe.content);
+  if (recipePage) {
+    recipePage.setAttribute('visible', 'true');
+    recipePage.removeAttribute('animation__open');
+    recipePage.setAttribute('animation__open', 'property: scale; from: 0.01 0.01 0.01; to: 1 1 1; dur: 500; easing: easeOutBack');
+  }
+  recipeIndex = (recipeIndex + 1) % recipes.length;
+  if (markerStatus) markerStatus.textContent = `Grimoire opened — ${recipe.title}`;
+}
+
+AFRAME.registerComponent('click-to-open', {
+  init() {
+    this.el.addEventListener('click', showRecipePage);
+  }
+});
 
 if (sceneEl && markerEl && spellbook) {
   markerEl.addEventListener('markerFound', () => {
@@ -17,6 +55,7 @@ if (sceneEl && markerEl && spellbook) {
     spellbook.setAttribute('scale', '0.001 0.001 0.001');
     spellbook.setAttribute('animation__reveal', 'property: scale; from: 0.001 0.001 0.001; to: 0.15 0.15 0.15; dur: 900; easing: easeOutElastic');
     if (spellbookEffects) spellbookEffects.setAttribute('visible', 'true');
+    if (recipePage) recipePage.setAttribute('visible', 'false');
     if (runeRing) runeRing.setAttribute('animation', 'property: rotation; to: -90 360 0; loop: true; dur: 9000; easing: linear');
     magicMotes.forEach((mote, index) => {
       mote.setAttribute('animation__float', `property: position; to: ${index % 2 ? '0.46' : '-0.46'} ${0.35 + index * 0.03} ${index % 2 ? '-0.12' : '0.14'}; dir: alternate; loop: true; dur: ${1800 + index * 160}; easing: easeInOutSine`);
@@ -35,6 +74,7 @@ if (sceneEl && markerEl && spellbook) {
     spellbook.setAttribute('rotation', '0 90 0');
     spellbook.setAttribute('scale', '0.15 0.15 0.15');
     if (spellbookEffects) spellbookEffects.setAttribute('visible', 'false');
+    if (recipePage) recipePage.setAttribute('visible', 'false');
     if (runeRing) runeRing.removeAttribute('animation');
     magicMotes.forEach((mote) => {
       mote.removeAttribute('animation__float');
