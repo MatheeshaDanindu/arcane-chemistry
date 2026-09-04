@@ -814,7 +814,6 @@ renderer.setAnimationLoop((time) => {
 
   if (ingredientJarsGroup) {
     ingredientJarsGroup.children.forEach((jar) => {
-      jar.position.y = jar.userData.baseY + Math.sin(time * 0.002 + jar.userData.phase) * 0.012;
       jar.traverse((child) => {
         if (child.userData.jarHalo && child.material) {
           child.material.opacity = selectedIngredients.includes(jar.userData.ingredient) ? 0.62 : 0.16;
