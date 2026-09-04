@@ -410,7 +410,7 @@ async function addWizardingProps() {
   ]);
 
   const props = [
-    { model: witch, height: 0.62, position: [-0.7, 0, 0.12], rotation: [0, 0.35, 0] },
+    { model: witch, height: 1.62, position: [-0.7, 0, 0.12], rotation: [0, 0.35, 0] },
     { model: spellbook, height: 0.22, position: [-0.15, 0.01, -0.62], rotation: [-0.15, 0.1, 0] },
     { model: wand, height: 0.34, position: [0.65, 0.16, 0.18], rotation: [0.35, 0.2, -0.8] },
     { model: candle, height: 0.27, position: [0.55, 0, -0.48], rotation: [0, 0.2, 0] }
