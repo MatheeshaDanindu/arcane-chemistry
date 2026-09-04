@@ -388,8 +388,8 @@ function createJarLabel(text) {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }));
-  label.scale.set(0.32, 0.08, 1);
-  label.position.y = 0.28;
+  label.scale.set(0.42, 0.105, 1);
+  label.position.y = 0.34;
   return label;
 }
 
@@ -429,16 +429,16 @@ function createFallbackIngredientJar(ingredient, index, angle) {
   const palette = [0x7ef0c5, 0xf4d35e, 0x4cc9f0, 0xb87333, 0xff8fab, 0xc77dff];
   const material = new THREE.MeshStandardMaterial({ color: 0x9aa7b8, metalness: 0.25, roughness: 0.3 });
   const liquidMaterial = new THREE.MeshStandardMaterial({ color: palette[index], emissive: palette[index], emissiveIntensity: 0.25, transparent: true, opacity: 0.86 });
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.13, 20), material);
-  body.position.y = 0.09;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.17, 20), material);
+  body.position.y = 0.12;
   jar.add(body);
-  const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.07, 0.08, 20), liquidMaterial);
-  liquid.position.y = 0.08;
+  const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.11, 20), liquidMaterial);
+  liquid.position.y = 0.11;
   jar.add(liquid);
-  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.055, 16), new THREE.MeshStandardMaterial({ color: 0x9b7653 }));
-  cork.position.y = 0.18;
+  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.065, 16), new THREE.MeshStandardMaterial({ color: 0x9b7653 }));
+  cork.position.y = 0.235;
   jar.add(cork);
-  jar.position.set(Math.cos(angle) * 0.62, 0.02, Math.sin(angle) * 0.62);
+  jar.position.set(Math.cos(angle) * 0.82, 0.08, Math.sin(angle) * 0.82);
   jar.rotation.y = -angle;
   jar.userData.ingredient = ingredient;
   jar.userData.baseY = jar.position.y;
@@ -454,25 +454,13 @@ async function addIngredientJars() {
   setStatus('The apothecary shelf is materialising around your cauldron...');
   const ingredients = ['vinegar', 'baking_soda', 'copper_sulfate', 'iron', 'hydrochloric_acid', 'sodium_hydroxide'];
 
-  try {
-    const gltf = await new Promise((resolve, reject) => {
-      loader.load('assets/models/ingredient-jar.glb', resolve, undefined, reject);
-    });
-    ingredientJarTemplate = gltf.scene;
-  } catch (error) {
-    console.warn('Ingredient jar model could not load:', error);
-    ingredientJarTemplate = null;
-  }
-
   ingredientJarsGroup = new THREE.Group();
   ingredientJarsGroup.name = 'apothecary-jars';
   cauldronRoot.add(ingredientJarsGroup);
 
   ingredients.forEach((ingredient, index) => {
     const angle = (index / ingredients.length) * Math.PI * 2;
-    const jar = ingredientJarTemplate
-      ? createIngredientJar(ingredient, index, angle)
-      : createFallbackIngredientJar(ingredient, index, angle);
+    const jar = createFallbackIngredientJar(ingredient, index, angle);
     ingredientJarsGroup.add(jar);
   });
   setStatus('The apothecary shelf is ready. Tap a jar or use the ingredient menu.');
