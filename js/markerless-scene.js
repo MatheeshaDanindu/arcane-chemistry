@@ -297,34 +297,41 @@ function buildCauldronFromModel(model) {
 
   root.updateMatrixWorld(true);
   const modelBounds = new THREE.Box3().setFromObject(root);
+  let bodyMesh = null;
   let bodyBounds = null;
   let largestBodyVolume = 0;
 
   root.traverse((child) => {
     if (!child.isMesh) return;
+    if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
     const childBounds = new THREE.Box3().setFromObject(child);
     const childSize = childBounds.getSize(new THREE.Vector3());
     const childVolume = childSize.x * childSize.y * childSize.z;
     if (childVolume > largestBodyVolume) {
       largestBodyVolume = childVolume;
+      bodyMesh = child;
       bodyBounds = childBounds;
     }
   });
 
   const openingBounds = bodyBounds || modelBounds;
-  const modelCenter = openingBounds.getCenter(new THREE.Vector3());
-  const liquidWorldPosition = new THREE.Vector3(
-    modelCenter.x,
-    openingBounds.max.y - (openingBounds.max.y - openingBounds.min.y) * 0.16,
-    modelCenter.z
+  const bodyGeometryCenter = bodyMesh?.geometry.boundingBox
+    ? bodyMesh.geometry.boundingBox.getCenter(new THREE.Vector3())
+    : new THREE.Vector3(0, 0, 0);
+  const bodyLocalCenter = bodyMesh ? bodyMesh.localToWorld(bodyGeometryCenter.clone()) : openingBounds.getCenter(new THREE.Vector3());
+  root.worldToLocal(bodyLocalCenter);
+  const bodyHeight = openingBounds.max.y - openingBounds.min.y;
+  const liquidLocalPosition = new THREE.Vector3(
+    bodyLocalCenter.x,
+    root.worldToLocal(new THREE.Vector3(0, openingBounds.max.y - bodyHeight * 0.16, 0)).y,
+    bodyLocalCenter.z
   );
-  root.worldToLocal(liquidWorldPosition);
 
   const liquid = new THREE.Mesh(
     new THREE.CylinderGeometry(0.18, 0.22, 0.06, 32),
     new THREE.MeshStandardMaterial({ color: 0x6ee7b7, emissive: 0x113322, transparent: true, opacity: 0.9 })
   );
-  liquid.position.copy(liquidWorldPosition);
+  liquid.position.copy(liquidLocalPosition);
   liquid.visible = true;
   root.add(liquid);
 
