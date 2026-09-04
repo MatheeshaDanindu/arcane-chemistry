@@ -1,6 +1,6 @@
 const markerStatus = document.getElementById('marker-status');
 const sceneEl = document.querySelector('a-scene');
-const markerEl = document.getElementById('hiro-marker');
+const markerEl = document.getElementById('custom-marker');
 const spellbook = document.getElementById('spellbook');
 const spellbookEffects = document.getElementById('spellbook-effects');
 const runeRing = document.getElementById('rune-ring');
@@ -8,6 +8,7 @@ const magicMotes = Array.from(document.querySelectorAll('.magic-mote'));
 const recipePage = document.getElementById('recipe-page');
 const recipeTitle = document.getElementById('recipe-title');
 const recipeContent = document.getElementById('recipe-content');
+const recipePageSurface = document.querySelector('.tappable-recipe-page');
 
 const recipes = [
   {
@@ -23,33 +24,72 @@ const recipes = [
     content: 'Hydrochloric Acid + Sodium Hydroxide\\nHCl + NaOH\\nSalt + water in a neutralisation reaction'
   }
 ];
-let recipeIndex = 0;
+let recipeIndex = -1;
+let markerIsVisible = false;
+let touchStartX = null;
+let touchStartY = null;
+let ignoreClickUntil = 0;
 
 const ambientAudio = new Audio('assets/audio/ambient-hum.mp3');
 ambientAudio.loop = true;
 ambientAudio.volume = 0.18;
 
-function showRecipePage() {
+function showRecipePage(direction = 1) {
+  recipeIndex = (recipeIndex + direction + recipes.length) % recipes.length;
   const recipe = recipes[recipeIndex];
   if (recipeTitle) recipeTitle.setAttribute('value', recipe.title);
   if (recipeContent) recipeContent.setAttribute('value', recipe.content);
   if (recipePage) {
     recipePage.setAttribute('visible', 'true');
-    recipePage.removeAttribute('animation__open');
-    recipePage.setAttribute('animation__open', 'property: scale; from: 0.01 0.01 0.01; to: 1 1 1; dur: 500; easing: easeOutBack');
+    recipePage.removeAttribute('animation__turn');
+    recipePage.setAttribute('scale', '0.02 1 1');
+    recipePage.setAttribute('animation__turn', `property: scale; from: 0.02 1 1; to: 1 1 1; dur: 620; easing: easeInOutCubic`);
   }
-  recipeIndex = (recipeIndex + 1) % recipes.length;
-  if (markerStatus) markerStatus.textContent = `Grimoire opened — ${recipe.title}`;
+  if (markerStatus) markerStatus.textContent = `${direction > 0 ? 'Page turned' : 'Page turned back'} — ${recipe.title}`;
 }
 
 AFRAME.registerComponent('click-to-open', {
   init() {
-    this.el.addEventListener('click', showRecipePage);
+    this.el.addEventListener('click', () => {
+      if (Date.now() < ignoreClickUntil) return;
+      showRecipePage(1);
+    });
   }
 });
 
+if (recipePageSurface) {
+  recipePageSurface.addEventListener('click', () => {
+    if (Date.now() < ignoreClickUntil) return;
+    showRecipePage(1);
+  });
+}
+
+function handleFingerPageTurn(event) {
+  if (!markerIsVisible || !recipePage || recipePage.getAttribute('visible') !== true) return;
+  const touch = event.changedTouches[0];
+  if (!touch || touchStartX === null || touchStartY === null) return;
+
+  const horizontalDistance = touch.clientX - touchStartX;
+  const verticalDistance = touch.clientY - touchStartY;
+  touchStartX = null;
+  touchStartY = null;
+
+  if (Math.abs(horizontalDistance) < 45 || Math.abs(horizontalDistance) < Math.abs(verticalDistance)) return;
+  ignoreClickUntil = Date.now() + 700;
+  showRecipePage(horizontalDistance < 0 ? 1 : -1);
+}
+
+document.addEventListener('touchstart', (event) => {
+  if (!markerIsVisible || !event.touches[0]) return;
+  touchStartX = event.touches[0].clientX;
+  touchStartY = event.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener('touchend', handleFingerPageTurn, { passive: true });
+
 if (sceneEl && markerEl && spellbook) {
   markerEl.addEventListener('markerFound', () => {
+    markerIsVisible = true;
     spellbook.removeAttribute('animation');
     spellbook.removeAttribute('animation__reveal');
     spellbook.setAttribute('scale', '0.001 0.001 0.001');
@@ -69,6 +109,9 @@ if (sceneEl && markerEl && spellbook) {
   });
 
   markerEl.addEventListener('markerLost', () => {
+    markerIsVisible = false;
+    touchStartX = null;
+    touchStartY = null;
     spellbook.removeAttribute('animation');
     spellbook.removeAttribute('animation__reveal');
     spellbook.setAttribute('rotation', '0 90 0');
