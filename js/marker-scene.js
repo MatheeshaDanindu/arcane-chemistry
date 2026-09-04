@@ -93,7 +93,7 @@ if (sceneEl && markerEl && spellbook) {
     spellbook.removeAttribute('animation');
     spellbook.removeAttribute('animation__reveal');
     spellbook.setAttribute('scale', '0.001 0.001 0.001');
-    spellbook.setAttribute('animation__reveal', 'property: scale; from: 0.001 0.001 0.001; to: 0.15 0.15 0.15; dur: 900; easing: easeOutElastic');
+    spellbook.setAttribute('animation__reveal', 'property: scale; from: 0.001 0.001 0.001; to: 1 1 1; dur: 900; easing: easeOutElastic');
     if (spellbookEffects) spellbookEffects.setAttribute('visible', 'true');
     if (recipePage) recipePage.setAttribute('visible', 'false');
     if (runeRing) runeRing.setAttribute('animation', 'property: rotation; to: -90 360 0; loop: true; dur: 9000; easing: linear');
@@ -114,8 +114,8 @@ if (sceneEl && markerEl && spellbook) {
     touchStartY = null;
     spellbook.removeAttribute('animation');
     spellbook.removeAttribute('animation__reveal');
-    spellbook.setAttribute('rotation', '0 90 0');
-    spellbook.setAttribute('scale', '0.15 0.15 0.15');
+    spellbook.setAttribute('rotation', '0 0 0');
+    spellbook.setAttribute('scale', '1 1 1');
     if (spellbookEffects) spellbookEffects.setAttribute('visible', 'false');
     if (recipePage) recipePage.setAttribute('visible', 'false');
     if (runeRing) runeRing.removeAttribute('animation');
