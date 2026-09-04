@@ -21,7 +21,6 @@ document.body.appendChild(
 
 const statusElement = document.getElementById('reaction-status');
 const fallbackVideo = document.getElementById('camera-fallback');
-const cameraPreviewButton = document.getElementById('camera-preview-button');
 const ingredientHelp = document.getElementById('ingredient-help');
 const brewStateElement = document.getElementById('brew-state');
 const reactionResultElement = document.getElementById('reaction-result');
@@ -149,17 +148,12 @@ async function startCameraFallback() {
   }
 }
 
-if (cameraPreviewButton) {
-  cameraPreviewButton.addEventListener('click', startCameraFallback);
-}
-
 if (!navigator.xr) {
   startCameraFallback();
 } else if (navigator.xr.isSessionSupported) {
   navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
     if (supported) {
       setStatus('Tap START AR below to open the camera and scan a surface.');
-      if (cameraPreviewButton) cameraPreviewButton.style.display = 'block';
     } else {
       startCameraFallback();
     }
@@ -761,7 +755,6 @@ renderer.xr.addEventListener('sessionstart', async () => {
   hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
   hitTestSourceRequested = true;
   setStatus('Move your phone to scan a surface, then tap the reticle to place the cauldron.');
-  if (cameraPreviewButton) cameraPreviewButton.style.display = 'none';
 });
 
 renderer.xr.addEventListener('sessionend', () => {
@@ -770,13 +763,11 @@ renderer.xr.addEventListener('sessionend', () => {
   hitTestSourceRequested = false;
   reticle.visible = false;
   setStatus('AR session ended. Tap START AR to try again.');
-  if (cameraPreviewButton) cameraPreviewButton.style.display = 'block';
 });
 
 window.addEventListener('unhandledrejection', (event) => {
   if (event.reason?.name === 'NotSupportedError' || event.reason?.name === 'InvalidStateError') {
-    setStatus('AR session could not start on this device. Tap Open Camera Preview, or use an ARCore Android phone.');
-    if (cameraPreviewButton) cameraPreviewButton.style.display = 'block';
+    setStatus('AR session could not start on this device. Use an ARCore Android phone with WebXR support.');
   }
 });
 
@@ -884,7 +875,7 @@ function resetBrew() {
 
 window.addEventListener('click', (event) => {
   const target = event.target;
-  if (target && target.closest && (target.closest('.ingredient-btn') || target.closest('.hud') || target.closest('.ingredient-ui') || target.closest('.potion-log') || target.closest('#camera-preview-button'))) {
+  if (target && target.closest && (target.closest('.ingredient-btn') || target.closest('.hud') || target.closest('.ingredient-ui') || target.closest('.potion-log'))) {
     return;
   }
 

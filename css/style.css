@@ -135,22 +135,6 @@ h1 {
   background: #111827;
 }
 
-.camera-preview-button {
-  display: none;
-  position: absolute;
-  left: 50%;
-  bottom: 160px;
-  transform: translateX(-50%);
-  z-index: 70;
-  border: 1px solid rgba(119, 213, 248, 0.75);
-  border-radius: 12px;
-  padding: 12px 16px;
-  background: rgba(12, 16, 24, 0.85);
-  color: var(--text);
-  font-weight: 700;
-  cursor: pointer;
-}
-
 .ar-page > canvas {
   position: absolute;
   inset: 0;
