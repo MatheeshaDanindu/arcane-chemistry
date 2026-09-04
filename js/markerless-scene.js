@@ -91,6 +91,27 @@ function animateBrewing(duration) {
   });
 }
 
+function updateReactionVisuals(progress) {
+  if (!reactionVisualState || !cauldronRoot) return;
+
+  const easedProgress = progress * progress * (3 - 2 * progress);
+  const liquid = cauldronRoot.userData.liquid;
+  const steam = cauldronRoot.userData.steam;
+  const steamMaterial = cauldronRoot.userData.steamMaterial;
+
+  if (liquid?.material) {
+    liquid.material.color.copy(reactionVisualState.startColor).lerp(reactionVisualState.targetColor, easedProgress);
+    liquid.material.emissive.copy(reactionVisualState.startEmissive).lerp(reactionVisualState.targetEmissive, easedProgress);
+  }
+
+  if (steam && steamMaterial) {
+    const particleProgress = reactionVisualState.reacts ? easedProgress : 0;
+    steam.visible = particleProgress > 0.01;
+    steamMaterial.uniforms.particleOpacity.value = reactionVisualState.particleOpacity * particleProgress;
+    steam.scale.setScalar(0.8 + particleProgress * 0.7);
+  }
+}
+
 async function startCameraFallback() {
   if (!fallbackVideo || !navigator.mediaDevices?.getUserMedia) {
     setStatus('Camera API unavailable. Use Android Chrome over HTTPS for markerless AR.');
@@ -156,6 +177,7 @@ let brewHistory = [];
 let placementLocked = false;
 let ingredientJarsGroup = null;
 let ingredientJarTemplate = null;
+let reactionVisualState = null;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 const xrController = renderer.xr.getController(0);
@@ -166,6 +188,9 @@ const reactionAudio = {
   neutralize: new Audio('assets/audio/reaction-neutralize.mp3'),
   displacement: new Audio('assets/audio/reaction-displacement.mp3')
 };
+const brewingAudio = new Audio('assets/audio/brewing.mp3');
+brewingAudio.loop = true;
+brewingAudio.volume = 0.28;
 
 function playReactionAudio(effect) {
   const sound = reactionAudio[effect];
@@ -175,6 +200,18 @@ function playReactionAudio(effect) {
   sound.play().catch(() => {
     console.warn('Reaction audio could not start automatically.');
   });
+}
+
+function startBrewingAudio() {
+  brewingAudio.currentTime = 0;
+  brewingAudio.play().catch(() => {
+    console.warn('Brewing audio could not start automatically.');
+  });
+}
+
+function stopBrewingAudio() {
+  brewingAudio.pause();
+  brewingAudio.currentTime = 0;
 }
 
 function createGlowParticleMaterial(color, size, opacity) {
@@ -260,34 +297,41 @@ function buildCauldronFromModel(model) {
 
   root.updateMatrixWorld(true);
   const modelBounds = new THREE.Box3().setFromObject(root);
+  let bodyMesh = null;
   let bodyBounds = null;
   let largestBodyVolume = 0;
 
   root.traverse((child) => {
     if (!child.isMesh) return;
+    if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
     const childBounds = new THREE.Box3().setFromObject(child);
     const childSize = childBounds.getSize(new THREE.Vector3());
     const childVolume = childSize.x * childSize.y * childSize.z;
     if (childVolume > largestBodyVolume) {
       largestBodyVolume = childVolume;
+      bodyMesh = child;
       bodyBounds = childBounds;
     }
   });
 
   const openingBounds = bodyBounds || modelBounds;
-  const modelCenter = openingBounds.getCenter(new THREE.Vector3());
-  const liquidWorldPosition = new THREE.Vector3(
-    modelCenter.x,
-    openingBounds.max.y - (openingBounds.max.y - openingBounds.min.y) * 0.16,
-    modelCenter.z
+  const bodyGeometryCenter = bodyMesh?.geometry.boundingBox
+    ? bodyMesh.geometry.boundingBox.getCenter(new THREE.Vector3())
+    : new THREE.Vector3(0, 0, 0);
+  const bodyLocalCenter = bodyMesh ? bodyMesh.localToWorld(bodyGeometryCenter.clone()) : openingBounds.getCenter(new THREE.Vector3());
+  root.worldToLocal(bodyLocalCenter);
+  const bodyHeight = openingBounds.max.y - openingBounds.min.y;
+  const liquidLocalPosition = new THREE.Vector3(
+    bodyLocalCenter.x,
+    root.worldToLocal(new THREE.Vector3(0, openingBounds.max.y - bodyHeight * 0.16, 0)).y,
+    bodyLocalCenter.z
   );
-  root.worldToLocal(liquidWorldPosition);
 
   const liquid = new THREE.Mesh(
     new THREE.CylinderGeometry(0.18, 0.22, 0.06, 32),
     new THREE.MeshStandardMaterial({ color: 0x6ee7b7, emissive: 0x113322, transparent: true, opacity: 0.9 })
   );
-  liquid.position.copy(liquidWorldPosition);
+  liquid.position.copy(liquidLocalPosition);
   liquid.visible = true;
   root.add(liquid);
 
@@ -425,9 +469,17 @@ function updateCauldronReaction(reaction) {
   const steam = cauldronRoot.userData.steam;
   if (!liquid.material || !steam) return;
 
-  liquid.material.color.setHex(reaction.color);
-  liquid.material.emissive = new THREE.Color(reaction.color).multiplyScalar(0.2);
-  liquid.material.needsUpdate = true;
+  const targetColor = new THREE.Color(reaction.color);
+  const targetEmissive = targetColor.clone().multiplyScalar(0.2);
+  reactionVisualState = {
+    startColor: liquid.material.color.clone(),
+    targetColor,
+    startEmissive: liquid.material.emissive.clone(),
+    targetEmissive,
+    reacts: reaction.effect !== 'none',
+    particleOpacity: reaction.effect === 'fizz' ? 0.82 : 0.62
+  };
+  updateReactionVisuals(1);
 
   cauldronRoot.scale.multiplyScalar(1.08);
   window.setTimeout(() => {
@@ -435,18 +487,11 @@ function updateCauldronReaction(reaction) {
   }, 450);
 
   if (reaction.effect === 'fizz') {
-    steam.visible = true;
-    steam.scale.setScalar(1.5);
     playReactionAudio('fizz');
   } else if (reaction.effect === 'neutralize') {
-    steam.visible = false;
     playReactionAudio('neutralize');
   } else if (reaction.effect === 'displacement' || reaction.effect === 'precipitate') {
-    steam.visible = true;
-    steam.scale.setScalar(1.25);
     playReactionAudio('displacement');
-  } else {
-    steam.visible = false;
   }
 
   setStatus(`${reaction.label} — ${reaction.description}`);
@@ -462,8 +507,20 @@ async function handleMix() {
   setBrewingState('brewing', 'brewing your potion');
   setStatus('The cauldron is stirring... consult the stars while the brew settles.');
   if (ingredientHelp) ingredientHelp.textContent = 'Your reagents are reacting...';
-  cauldronRoot.userData.steam.visible = true;
+  startBrewingAudio();
+  const reacts = fallbackReaction.effect !== 'none';
+  reactionVisualState = {
+    startColor: cauldronRoot.userData.liquid.material.color.clone(),
+    targetColor: new THREE.Color(fallbackReaction.color),
+    startEmissive: cauldronRoot.userData.liquid.material.emissive.clone(),
+    targetEmissive: new THREE.Color(fallbackReaction.color).multiplyScalar(0.2),
+    reacts,
+    particleOpacity: fallbackReaction.effect === 'fizz' ? 0.82 : 0.62
+  };
+  cauldronRoot.userData.steam.visible = false;
+  cauldronRoot.userData.steamMaterial.uniforms.particleOpacity.value = 0;
   await animateBrewing(1800);
+  stopBrewingAudio();
   const details = await window.ArcaneChemistry?.getReactionDetails(first, second);
   const reaction = details?.reaction || fallbackReaction;
 
@@ -538,6 +595,7 @@ renderer.xr.addEventListener('sessionstart', async () => {
 });
 
 renderer.xr.addEventListener('sessionend', () => {
+  stopBrewingAudio();
   hitTestSource = null;
   hitTestSourceRequested = false;
   reticle.visible = false;
@@ -639,10 +697,13 @@ async function placeCauldronAtReticle() {
 
 function resetBrew() {
   if (!cauldronRoot) return;
+  stopBrewingAudio();
   clearIngredientSelection();
   cauldronRoot.userData.liquid.material.color.setHex(0x6ee7b7);
   cauldronRoot.userData.liquid.material.emissive.setHex(0x113322);
   cauldronRoot.userData.steam.visible = false;
+  cauldronRoot.userData.steamMaterial.uniforms.particleOpacity.value = 0;
+  reactionVisualState = null;
   setIngredientAvailability(true);
   setBrewingState('ready', 'cauldron cleared');
   if (ingredientHelp) ingredientHelp.textContent = 'Choose your first reagent from the apothecary shelf.';
