@@ -239,6 +239,48 @@ h1 {
   margin-bottom: 12px;
 }
 
+.panel-heading,
+.log-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.panel-heading .ingredient-header {
+  margin-bottom: 0;
+}
+
+.collapse-button {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 1px solid rgba(244, 211, 94, 0.6);
+  border-radius: 8px;
+  background: rgba(244, 211, 94, 0.08);
+  color: var(--gold);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ingredient-ui.is-collapsed,
+.potion-log.is-collapsed {
+  width: auto;
+  min-width: 210px;
+  padding: 10px 12px;
+}
+
+.ingredient-ui.is-collapsed .panel-heading,
+.potion-log.is-collapsed .log-heading {
+  margin: 0;
+}
+
+.ingredient-ui.is-collapsed #ingredients-content,
+.potion-log.is-collapsed #results-content {
+  display: none;
+}
+
 .ingredient-help {
   color: var(--muted);
   font-size: 0.78rem;

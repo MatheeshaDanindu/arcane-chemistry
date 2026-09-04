@@ -32,9 +32,24 @@ const brewProgress = document.getElementById('brew-progress');
 const brewProgressFill = document.getElementById('brew-progress-fill');
 const brewProgressValue = document.getElementById('brew-progress-value');
 const brewProgressTrack = brewProgress?.querySelector('.brew-progress-track');
+const ingredientsPanel = document.querySelector('.ingredient-ui');
+const ingredientsToggle = document.getElementById('ingredients-toggle');
+const resultsPanel = document.querySelector('.potion-log');
+const resultsToggle = document.getElementById('results-toggle');
 
 function setStatus(message) {
   if (statusElement) statusElement.textContent = message;
+}
+
+function setupCollapsiblePanel(panel, toggle, content, label) {
+  if (!panel || !toggle || !content) return;
+  toggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const collapsed = panel.classList.toggle('is-collapsed');
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+    toggle.textContent = collapsed ? '+' : '-';
+    toggle.title = `${collapsed ? 'Expand' : 'Collapse'} ${label}`;
+  });
 }
 
 function setBrewingState(state, message) {
@@ -894,6 +909,8 @@ xrController.addEventListener('select', () => {
 });
 scene.add(xrController);
 
+setupCollapsiblePanel(ingredientsPanel, ingredientsToggle, document.getElementById('ingredients-content'), 'ingredient panel');
+setupCollapsiblePanel(resultsPanel, resultsToggle, document.getElementById('results-content'), 'potion log');
 setIngredientAvailability(false);
 renderHistory();
 attachIngredientInteractions();
