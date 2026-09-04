@@ -21,7 +21,6 @@ document.body.appendChild(
 
 const statusElement = document.getElementById('reaction-status');
 const fallbackVideo = document.getElementById('camera-fallback');
-const cameraPreviewButton = document.getElementById('camera-preview-button');
 const ingredientHelp = document.getElementById('ingredient-help');
 const brewStateElement = document.getElementById('brew-state');
 const reactionResultElement = document.getElementById('reaction-result');
@@ -32,9 +31,24 @@ const brewProgress = document.getElementById('brew-progress');
 const brewProgressFill = document.getElementById('brew-progress-fill');
 const brewProgressValue = document.getElementById('brew-progress-value');
 const brewProgressTrack = brewProgress?.querySelector('.brew-progress-track');
+const ingredientsPanel = document.querySelector('.ingredient-ui');
+const ingredientsToggle = document.getElementById('ingredients-toggle');
+const resultsPanel = document.querySelector('.potion-log');
+const resultsToggle = document.getElementById('results-toggle');
 
 function setStatus(message) {
   if (statusElement) statusElement.textContent = message;
+}
+
+function setupCollapsiblePanel(panel, toggle, content, label) {
+  if (!panel || !toggle || !content) return;
+  toggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const collapsed = panel.classList.toggle('is-collapsed');
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+    toggle.textContent = collapsed ? '+' : '-';
+    toggle.title = `${collapsed ? 'Expand' : 'Collapse'} ${label}`;
+  });
 }
 
 function setBrewingState(state, message) {
@@ -134,17 +148,12 @@ async function startCameraFallback() {
   }
 }
 
-if (cameraPreviewButton) {
-  cameraPreviewButton.addEventListener('click', startCameraFallback);
-}
-
 if (!navigator.xr) {
   startCameraFallback();
 } else if (navigator.xr.isSessionSupported) {
   navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
     if (supported) {
       setStatus('Tap START AR below to open the camera and scan a surface.');
-      if (cameraPreviewButton) cameraPreviewButton.style.display = 'block';
     } else {
       startCameraFallback();
     }
@@ -411,10 +420,10 @@ async function addWizardingProps() {
   ]);
 
   const props = [
-    { model: witch, height: 2.62, position: [-0.7, 0, 0.12], rotation: [0, 0.35, 0] },
-    { model: spellbook, height: 0.22, position: [-0.15, 0.01, -0.62], rotation: [-0.15, 0.1, 0] },
-    { model: wand, height: 0.34, position: [0.65, 0.16, 0.18], rotation: [0.35, 0.2, -0.8] },
-    { model: candle, height: 0.27, position: [0.55, 0, -0.48], rotation: [0, 0.2, 0] }
+    { model: witch, height: 4.62, position: [-0.7, 0, -0.12], rotation: [0, 0.35, 0] },
+    { model: spellbook, height: 0.22, position: [-0.15, 0.01, 0.62], rotation: [-0.15, 0.1, 0] },
+    { model: wand, height: 0.34, position: [0.65, 0.16, 0.28], rotation: [0.35, 0.2, -0.8] },
+    { model: candle, height: 0.27, position: [0.55, 0, 0.48], rotation: [0, 0.2, 0] }
   ];
 
   props.forEach(({ model, height, position, rotation }) => {
@@ -435,24 +444,53 @@ async function addWizardingProps() {
 
 function createJarLabel(text) {
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 64;
+  canvas.width = 300;
+  canvas.height = 88;
   const context = canvas.getContext('2d');
   context.fillStyle = 'rgba(10, 16, 28, 0.88)';
-  context.roundRect(3, 3, 250, 58, 12);
+  context.roundRect(3, 3, 294, 82, 12);
   context.fill();
-  context.font = 'bold 22px Arial';
+  context.font = 'bold 20px Arial';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillStyle = '#f4d35e';
-  context.fillText(text, 128, 32);
+
+  const words = text.split(' ');
+  const lines = [];
+  let currentLine = '';
+  words.forEach((word) => {
+    const candidate = currentLine ? `${currentLine} ${word}` : word;
+    if (context.measureText(candidate).width > 270 && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = candidate;
+    }
+  });
+  if (currentLine) lines.push(currentLine);
+  const visibleLines = lines.slice(0, 2);
+  visibleLines.forEach((line, index) => {
+    context.fillText(line, 150, visibleLines.length === 1 ? 44 : 32 + index * 24);
+  });
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }));
-  label.scale.set(0.42, 0.105, 1);
-  label.position.y = 0.34;
+  label.scale.set(0.3, 0.088, 1);
+  label.position.set(0, 0.15, 0.2);
   return label;
+}
+
+function getShortIngredientLabel(ingredient) {
+  const labels = {
+    vinegar: 'Vinegar',
+    baking_soda: 'Baking Soda',
+    copper_sulfate: 'Copper Sulfate',
+    iron: 'Iron',
+    hydrochloric_acid: 'Hydrochloric Acid',
+    sodium_hydroxide: 'Sodium Hydroxide'
+  };
+  return labels[ingredient] || ingredient;
 }
 
 function createIngredientJar(ingredient, index, angle) {
@@ -473,7 +511,7 @@ function createIngredientJar(ingredient, index, angle) {
   jar.userData.baseY = jar.position.y;
   jar.userData.phase = index * 0.8;
   jar.userData.selectable = true;
-  jar.add(createJarLabel(window.ArcaneChemistry?.ingredientDetails?.[ingredient]?.label || ingredient));
+  jar.add(createJarLabel(getShortIngredientLabel(ingredient)));
 
   const halo = new THREE.Mesh(
     new THREE.CircleGeometry(0.12, 24),
@@ -506,7 +544,7 @@ function createFallbackIngredientJar(ingredient, index, position) {
   jar.userData.baseY = jar.position.y;
   jar.userData.phase = index * 0.8;
   jar.userData.selectable = true;
-  jar.add(createJarLabel(window.ArcaneChemistry?.ingredientDetails?.[ingredient]?.label || ingredient));
+  jar.add(createJarLabel(getShortIngredientLabel(ingredient)));
   return jar;
 }
 
@@ -717,7 +755,6 @@ renderer.xr.addEventListener('sessionstart', async () => {
   hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
   hitTestSourceRequested = true;
   setStatus('Move your phone to scan a surface, then tap the reticle to place the cauldron.');
-  if (cameraPreviewButton) cameraPreviewButton.style.display = 'none';
 });
 
 renderer.xr.addEventListener('sessionend', () => {
@@ -726,13 +763,11 @@ renderer.xr.addEventListener('sessionend', () => {
   hitTestSourceRequested = false;
   reticle.visible = false;
   setStatus('AR session ended. Tap START AR to try again.');
-  if (cameraPreviewButton) cameraPreviewButton.style.display = 'block';
 });
 
 window.addEventListener('unhandledrejection', (event) => {
   if (event.reason?.name === 'NotSupportedError' || event.reason?.name === 'InvalidStateError') {
-    setStatus('AR session could not start on this device. Tap Open Camera Preview, or use an ARCore Android phone.');
-    if (cameraPreviewButton) cameraPreviewButton.style.display = 'block';
+    setStatus('AR session could not start on this device. Use an ARCore Android phone with WebXR support.');
   }
 });
 
@@ -785,7 +820,6 @@ renderer.setAnimationLoop((time) => {
 
   if (ingredientJarsGroup) {
     ingredientJarsGroup.children.forEach((jar) => {
-      jar.position.y = jar.userData.baseY + Math.sin(time * 0.002 + jar.userData.phase) * 0.012;
       jar.traverse((child) => {
         if (child.userData.jarHalo && child.material) {
           child.material.opacity = selectedIngredients.includes(jar.userData.ingredient) ? 0.62 : 0.16;
@@ -841,7 +875,7 @@ function resetBrew() {
 
 window.addEventListener('click', (event) => {
   const target = event.target;
-  if (target && target.closest && (target.closest('.ingredient-btn') || target.closest('.hud') || target.closest('.ingredient-ui') || target.closest('.potion-log') || target.closest('#camera-preview-button'))) {
+  if (target && target.closest && (target.closest('.ingredient-btn') || target.closest('.hud') || target.closest('.ingredient-ui') || target.closest('.potion-log'))) {
     return;
   }
 
@@ -866,6 +900,8 @@ xrController.addEventListener('select', () => {
 });
 scene.add(xrController);
 
+setupCollapsiblePanel(ingredientsPanel, ingredientsToggle, document.getElementById('ingredients-content'), 'ingredient panel');
+setupCollapsiblePanel(resultsPanel, resultsToggle, document.getElementById('results-content'), 'potion log');
 setIngredientAvailability(false);
 renderHistory();
 attachIngredientInteractions();
