@@ -435,24 +435,53 @@ async function addWizardingProps() {
 
 function createJarLabel(text) {
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 64;
+  canvas.width = 300;
+  canvas.height = 88;
   const context = canvas.getContext('2d');
   context.fillStyle = 'rgba(10, 16, 28, 0.88)';
-  context.roundRect(3, 3, 250, 58, 12);
+  context.roundRect(3, 3, 294, 82, 12);
   context.fill();
-  context.font = 'bold 22px Arial';
+  context.font = 'bold 20px Arial';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillStyle = '#f4d35e';
-  context.fillText(text, 128, 32);
+
+  const words = text.split(' ');
+  const lines = [];
+  let currentLine = '';
+  words.forEach((word) => {
+    const candidate = currentLine ? `${currentLine} ${word}` : word;
+    if (context.measureText(candidate).width > 270 && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = candidate;
+    }
+  });
+  if (currentLine) lines.push(currentLine);
+  const visibleLines = lines.slice(0, 2);
+  visibleLines.forEach((line, index) => {
+    context.fillText(line, 150, visibleLines.length === 1 ? 44 : 32 + index * 24);
+  });
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }));
-  label.scale.set(0.42, 0.105, 1);
-  label.position.y = 0.34;
+  label.scale.set(0.3, 0.088, 1);
+  label.position.set(0, 0.15, 0.2);
   return label;
+}
+
+function getShortIngredientLabel(ingredient) {
+  const labels = {
+    vinegar: 'Vinegar',
+    baking_soda: 'Baking Soda',
+    copper_sulfate: 'Copper Sulfate',
+    iron: 'Iron',
+    hydrochloric_acid: 'Hydrochloric Acid',
+    sodium_hydroxide: 'Sodium Hydroxide'
+  };
+  return labels[ingredient] || ingredient;
 }
 
 function createIngredientJar(ingredient, index, angle) {
@@ -473,7 +502,7 @@ function createIngredientJar(ingredient, index, angle) {
   jar.userData.baseY = jar.position.y;
   jar.userData.phase = index * 0.8;
   jar.userData.selectable = true;
-  jar.add(createJarLabel(window.ArcaneChemistry?.ingredientDetails?.[ingredient]?.label || ingredient));
+  jar.add(createJarLabel(getShortIngredientLabel(ingredient)));
 
   const halo = new THREE.Mesh(
     new THREE.CircleGeometry(0.12, 24),
@@ -506,7 +535,7 @@ function createFallbackIngredientJar(ingredient, index, position) {
   jar.userData.baseY = jar.position.y;
   jar.userData.phase = index * 0.8;
   jar.userData.selectable = true;
-  jar.add(createJarLabel(window.ArcaneChemistry?.ingredientDetails?.[ingredient]?.label || ingredient));
+  jar.add(createJarLabel(getShortIngredientLabel(ingredient)));
   return jar;
 }
 
