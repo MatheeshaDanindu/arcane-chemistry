@@ -3,38 +3,71 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Arcane Chemistry</title>
+    <meta name="theme-color" content="#0b1220" />
+    <title>Arcane Chemistry — Potions Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body class="landing-page">
-    <main class="landing-shell">
-      <header class="landing-header">
-        <p class="eyebrow">Arcane Chemistry Lab by Matheesha Herath</p>
-        <h1>Choose your magical lab mode</h1>
-      </header>
+    <div class="dust" aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
 
-      <section class="mode-grid">
-        <a class="mode-card" href="marker.html">
-          <span class="mode-tag">Marker-based AR</span>
-          <h2>Scan the spellbook page</h2>
-          <p>Point your camera at the Hiro marker to reveal an enchanted spellbook.</p>
+    <main class="workbench">
+      <p class="bench-tagline">Arcane Chemistry — a potions lab by Matheesha Herath</p>
+      <h1 class="bench-title">Pick your lab station</h1>
+
+      <div class="vessels">
+        <a class="vessel vessel--bottle" href="marker.html">
+          <span class="vessel-glow" aria-hidden="true"></span>
+          <span class="bottle-cork" aria-hidden="true"></span>
+          <span class="bottle-neck" aria-hidden="true"></span>
+          <span class="bottle-body" aria-hidden="true">
+            <span class="bottle-liquid">
+              <span class="bubble"></span>
+              <span class="bubble"></span>
+              <span class="bubble"></span>
+            </span>
+          </span>
+          <span class="vessel-tag">
+            <strong>Marker AR</strong>
+            Scan a printed label to summon the spellbook
+          </span>
         </a>
 
-        <a class="mode-card" href="markerless.html">
-          <span class="mode-tag">Markerless AR</span>
-          <h2>Place in space</h2>
-          <p>Find a surface, tap to place the cauldron, and brew potions in the real world.</p>
+        <a class="vessel vessel--cauldron" href="markerless.html">
+          <span class="steam" aria-hidden="true"></span>
+          <span class="steam" aria-hidden="true"></span>
+          <span class="cauldron-glow" aria-hidden="true"></span>
+          <span class="cauldron-rim" aria-hidden="true"></span>
+          <span class="cauldron-body" aria-hidden="true">
+            <span class="cauldron-leg cauldron-leg--left"></span>
+            <span class="cauldron-leg cauldron-leg--center"></span>
+            <span class="cauldron-leg cauldron-leg--right"></span>
+            <span class="bubble"></span>
+            <span class="bubble"></span>
+            <span class="bubble"></span>
+          </span>
+          <span class="vessel-tag">
+            <strong>Markerless AR</strong>
+            Place a cauldron anywhere in your room
+          </span>
         </a>
-      </section>
+      </div>
 
-      <section class="info-panel">
-        <h3>Quick start</h3>
-        <ul>
-          <li>Use a phone browser for the real AR testing flow.</li>
-          <li>Marker mode uses the Hiro pattern.</li>
-          <li>Markerless mode relies on WebXR hit-testing and is best tested on Android Chrome.</li>
-        </ul>
-      </section>
+      <p class="bench-note">
+        Best on a phone browser with camera access allowed. The marker station needs the printed spellbook sigil
+        from <code>assets/markers</code>; the markerless station uses WebXR hit-testing — Android Chrome is the
+        most reliable.
+      </p>
     </main>
   </body>
 </html>
