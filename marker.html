@@ -90,34 +90,36 @@
             click-to-open
             width="0.66" height="0.16" depth="0.36"
             position="0 0.05 0"
-            material="opacity: 0; transparent: true"
+            material="opacity: 0; transparent: true; depthWrite: false"
           ></a-box>
 
-        </a-entity>
-
-        <!-- Recipe page: hinged at the spine (x = 0) so it can flip open like a real page. -->
-        <!-- The leaf rests directly over the right-hand printed page (x = 0.16), so the -->
-        <!-- recipe reads as being written on the book itself instead of floating above it. -->
-        <a-entity id="recipe-hinge" position="0 0.0345 0" rotation="0 0 0">
-          <a-entity id="recipe-leaf" visible="false" position="0.16 0 0" rotation="-90 0 0">
-            <a-plane class="tappable-recipe-page" width="0.26" height="0.32" color="#f4e7bd" material="shader: flat; side: double"></a-plane>
-            <a-text id="recipe-title" value="Potion Recipe" align="center" color="#2a183d" width="0.62" wrap-count="22" position="0 0.105 0.003"></a-text>
-            <a-text id="recipe-content" value="" align="center" color="#3b2850" width="0.52" wrap-count="40" position="0 -0.015 0.003"></a-text>
-            <a-text value="&#8249; swipe to turn the page &#8250;" align="center" color="#8a6a34" width="0.36" wrap-count="34" position="0 -0.13 0.003"></a-text>
+          <!-- Recipe page: hinged at the spine (x = 0) so it can flip open like a real page. -->
+          <!-- The leaf rests directly over the right-hand printed page (x = 0.16), so the -->
+          <!-- recipe reads as being written on the book itself instead of floating above it. -->
+          <!-- Nested inside #spellbook (not a sibling) so it scales and moves as one unit with the book. -->
+          <a-entity id="recipe-hinge" position="0 0.045 0" rotation="0 0 0">
+            <a-entity id="recipe-leaf" visible="false" position="0.16 0 0" rotation="-90 0 0">
+              <a-plane class="tappable-recipe-page" width="0.3" height="0.36" color="#f7ecc9" material="shader: flat; side: double"></a-plane>
+              <a-text id="recipe-title" value="Potion Recipe" align="center" color="#1c1030" width="0.25" wrap-count="24" position="0 0.12 0.015"></a-text>
+              <a-text id="recipe-content" value="" align="center" color="#2a1840" width="0.26" wrap-count="42" position="0 -0.02 0.015"></a-text>
+              <a-text value="&#8249; swipe to turn the page &#8250;" align="center" color="#7a5a28" width="0.3" wrap-count="36" position="0 -0.145 0.015"></a-text>
+            </a-entity>
           </a-entity>
+
+          <!-- Also nested inside #spellbook so the glow/rings/motes scale with the book. -->
+          <a-entity id="spellbook-effects" visible="false">
+            <a-ring id="rune-ring" position="0 0.025 0" radius-inner="0.28" radius-outer="0.31" rotation="-90 0 0" color="#f4d35e" material="shader: flat; transparent: true; opacity: 0.9"></a-ring>
+            <a-ring position="0 0.03 0" radius-inner="0.42" radius-outer="0.425" rotation="-90 0 0" color="#77d5f8" material="shader: flat; transparent: true; opacity: 0.72"></a-ring>
+            <a-plane position="0 0.27 0" width="0.82" height="0.62" rotation="-90 0 0" color="#f4d35e" material="shader: flat; transparent: true; opacity: 0.12"></a-plane>
+            <a-sphere class="magic-mote" position="-0.42 0.2 0.1" radius="0.025" color="#77d5f8" material="shader: flat; transparent: true; opacity: 0.9"></a-sphere>
+            <a-sphere class="magic-mote" position="0.38 0.3 -0.08" radius="0.02" color="#f4d35e" material="shader: flat; transparent: true; opacity: 0.85"></a-sphere>
+            <a-sphere class="magic-mote" position="0.16 0.48 0.14" radius="0.018" color="#7ef0c5" material="shader: flat; transparent: true; opacity: 0.9"></a-sphere>
+            <a-sphere class="magic-mote" position="-0.22 0.42 -0.12" radius="0.016" color="#f4d35e" material="shader: flat; transparent: true; opacity: 0.8"></a-sphere>
+            <a-sphere class="magic-mote" position="0.48 0.18 0.12" radius="0.014" color="#77d5f8" material="shader: flat; transparent: true; opacity: 0.8"></a-sphere>
+          </a-entity>
+
         </a-entity>
 
-        <a-entity id="spellbook-effects" visible="false">
-          <a-ring id="rune-ring" position="0 0.025 0" radius-inner="0.28" radius-outer="0.31" rotation="-90 0 0" color="#f4d35e" material="shader: flat; transparent: true; opacity: 0.9"></a-ring>
-          <a-ring position="0 0.03 0" radius-inner="0.42" radius-outer="0.425" rotation="-90 0 0" color="#77d5f8" material="shader: flat; transparent: true; opacity: 0.72"></a-ring>
-          <a-plane position="0 0.27 0" width="0.82" height="0.62" rotation="-90 0 0" color="#f4d35e" material="shader: flat; transparent: true; opacity: 0.12"></a-plane>
-          <a-sphere class="magic-mote" position="-0.42 0.2 0.1" radius="0.025" color="#77d5f8" material="shader: flat; transparent: true; opacity: 0.9"></a-sphere>
-          <a-sphere class="magic-mote" position="0.38 0.3 -0.08" radius="0.02" color="#f4d35e" material="shader: flat; transparent: true; opacity: 0.85"></a-sphere>
-          <a-sphere class="magic-mote" position="0.16 0.48 0.14" radius="0.018" color="#7ef0c5" material="shader: flat; transparent: true; opacity: 0.9"></a-sphere>
-          <a-sphere class="magic-mote" position="-0.22 0.42 -0.12" radius="0.016" color="#f4d35e" material="shader: flat; transparent: true; opacity: 0.8"></a-sphere>
-          <a-sphere class="magic-mote" position="0.48 0.18 0.12" radius="0.014" color="#77d5f8" material="shader: flat; transparent: true; opacity: 0.8"></a-sphere>
-        </a-entity>
-        
       </a-marker>
       
       <a-entity camera cursor="rayOrigin: mouse; fuse: false" raycaster="objects: .tappable-spellbook, .tappable-recipe-page; far: 20"></a-entity>
