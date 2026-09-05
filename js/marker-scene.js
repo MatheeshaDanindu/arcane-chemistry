@@ -37,6 +37,17 @@ const ambientAudio = new Audio('assets/audio/ambient-hum.mp3');
 ambientAudio.loop = true;
 ambientAudio.volume = 0.18;
 
+const pageFlipAudio = new Audio('assets/audio/page-flip.mp3');
+pageFlipAudio.volume = 0.6;
+
+function playPageFlipSound() {
+  // Rewind before playing so rapid swipes each retrigger the sound from the start.
+  pageFlipAudio.currentTime = 0;
+  pageFlipAudio.play().catch(() => {
+    console.warn('Page-flip sound could not play automatically.');
+  });
+}
+
 function applyRecipeContent(index) {
   const recipe = recipes[index];
   if (recipeTitle) recipeTitle.setAttribute('value', recipe.title);
@@ -57,6 +68,7 @@ function turnPage(direction) {
   recipeHinge.removeAttribute('animation__down');
   isFlipping = true;
   recipeLeaf.setAttribute('visible', 'true');
+  playPageFlipSound();
 
   if (opening) {
     // First reveal: the page drops in from edge-on, landing flat and open on the book.
@@ -130,7 +142,7 @@ if (sceneEl && markerEl && spellbook) {
     spellbook.removeAttribute('animation');
     spellbook.removeAttribute('animation__reveal');
     spellbook.setAttribute('scale', '0.001 0.001 0.001');
-    spellbook.setAttribute('animation__reveal', 'property: scale; from: 0.001 0.001 0.001; to: 1 1 1; dur: 900; easing: easeOutElastic');
+    spellbook.setAttribute('animation__reveal', 'property: scale; from: 0.001 0.001 0.001; to: 2 2 2; dur: 900; easing: easeOutElastic');
     if (spellbookEffects) spellbookEffects.setAttribute('visible', 'true');
 
     recipeIndex = -1;
@@ -162,7 +174,7 @@ if (sceneEl && markerEl && spellbook) {
     spellbook.removeAttribute('animation');
     spellbook.removeAttribute('animation__reveal');
     spellbook.setAttribute('rotation', '0 0 0');
-    spellbook.setAttribute('scale', '1 1 1');
+    spellbook.setAttribute('scale', '2 2 2');
     if (spellbookEffects) spellbookEffects.setAttribute('visible', 'false');
 
     recipeIndex = -1;
